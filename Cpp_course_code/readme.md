@@ -1,0 +1,1 @@
+# There are some useful(or beneficial) codes I wrote in the C++ class before 
