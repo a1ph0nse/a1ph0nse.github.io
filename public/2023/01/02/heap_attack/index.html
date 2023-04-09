@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="堆的利用方式非常多，但大多都不能直接获得shell，而是通过改变程序流程或者获得任意写再利用其它方式获得shell（如修改hook为one_gadget，FSOP等等）。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Heap Basic Attack">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/heap_attack/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="堆的利用方式非常多，但大多都不能直接获得shell，而是通过改变程序流程或者获得任意写再利用其它方式获得shell（如修改hook为one_gadget，FSOP等等）。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://a1ph0nse.github.io/2023/01/02/heap_attack/heap_attack/FastbinDoubleFree.png">
+<meta property="article:published_time" content="2023-01-01T16:00:50.000Z">
+<meta property="article:modified_time" content="2023-03-19T11:44:36.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://a1ph0nse.github.io/2023/01/02/heap_attack/heap_attack/FastbinDoubleFree.png">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/heap_attack/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Heap Basic Attack | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/heap_attack/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Heap Basic Attack
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-02 00:00:50" itemprop="dateCreated datePublished" datetime="2023-01-02T00:00:50+08:00">2023-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-03-19 19:44:36" itemprop="dateModified" datetime="2023-03-19T19:44:36+08:00">2023-03-19</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>堆的利用方式非常多，但大多都不能直接获得shell，而是通过<strong>改变程序流程</strong>或者获得<strong>任意写</strong>再利用其它方式获得shell（如修改hook为one_gadget，FSOP等等）。</p>
+<span id="more"></span>
+
+<h3 id="堆溢出"><a href="#堆溢出" class="headerlink" title="堆溢出"></a>堆溢出</h3><p>和栈溢出类似，堆溢出漏洞源于程序没有对写入的数据长度进行合理的控制，导致<strong>程序向chunk中写入了超出其可使用大小的数据</strong>(可使用大小不一定等于申请的大小，如large bin的切割机制导致了可使用的大小会大于申请的大小)。</p>
+<p>不同与栈溢出，堆溢出无法直接控制返回地址，其利用主要如下：</p>
+<ol>
+<li>覆盖<strong>物理地址上后面</strong>的chunk的内容（如prev_size,size及其标志位,chunk中保存的内容）。</li>
+<li>协助其它机制实现任意写（如unlink），通常是修改fd,bk,fd_nextsize,bkk_nextsize。</li>
+</ol>
+<h3 id="堆的Off-By-One"><a href="#堆的Off-By-One" class="headerlink" title="堆的Off-By-One"></a>堆的Off-By-One</h3><p>严格来说 off-by-one 漏洞是一种特殊的溢出漏洞，即<strong>仅仅溢出了一个字节</strong>，通常在程序的边界检查不严格（循环设置出错）和字符串操作（没有注意末尾的’\x00’）中出现。</p>
+<p>利用方式：</p>
+<ol>
+<li>溢出字节为可控制任意字节：通过修改size造成块结构之间出现重叠，从而泄露其他块数据，或是覆盖其他块数据。</li>
+<li>溢出字节为NULL：在 size 为 0x100 的时候，溢出 NULL 字节可以使得 prev_inuse 位被清，这样前块会被认为是free块。<br> （1）这时可以选择使用 nlink方法进行处理。<br> （2）另外，这时 prev_size 域就会启用，就可以伪造 prev_size ，从而造成块之间发生重叠。（旧的unlink没有检查按照 prev_size 找到的块的大小与prev_size 是否一致）。</li>
+</ol>
+<p><code>libc-2.29</code>增加了检测<code>next chunk</code>的<code>prev_size</code>，会报错：<code>malloc(): mismatching next-&gt;prev_size (unsorted)</code>，也增加了检测<code>next chunk</code>的地址是不是个堆块，会报错<code>malloc(): invalid next size (unsorted)</code>。<br><code>libc-2.23(11)</code>的版本，当释放某一个非<code>fast bin</code>的堆块时，若上/下某堆块空闲，则会检测该空闲堆块的<code>size</code>与其<code>next chunk</code>的<code>prev_size</code>是否相等。</p>
+<h3 id="chunk-extend-and-overlapping（好像还有chunk-shrink的，但没找资料）"><a href="#chunk-extend-and-overlapping（好像还有chunk-shrink的，但没找资料）" class="headerlink" title="chunk extend and overlapping（好像还有chunk shrink的，但没找资料）"></a>chunk extend and overlapping（好像还有chunk shrink的，但没找资料）</h3><p>chunk extend 是堆漏洞的一种常见利用手法，通过 extend 可以实现 chunk overlapping 的效果。实现overlapping之后，不但可以读取<strong>已经free了的chunk的数据来泄露</strong>信息（如unsorted bin头的main_arena+96），还可以对<strong>bin或tcache中的chunk的内容进行修改</strong>（如修改fd,bk）来协助进行其它攻击。</p>
+<p>chunk extend的原理在于：<strong>ptmalloc通过prev_size和size的内容判断chunk的使用情况和对chunk的前后块进行定位</strong>。简而言之，chunk extend通过<strong>控制size和prev_size</strong>来实现overlapping。实现chunk extend的前提是：能够控制size或prev_size。</p>
+<p>利用方法：</p>
+<ol>
+<li>将chunk的size位改大，使其包含下一个chunk的内容后，将其释放。这样会将两个chunk一起释，再次请求可将两个chunk的内存一起请求回来，导致第二个chunk能在两个地方被控制，从而实现overlapping。</li>
+<li>将已经释放的chunk的size位改大，这样malloc的时候就能把后面的内存一并申请出来，实现overlapping。（与1.类似）</li>
+<li>修改chunk的prev_size和prev_inuse位，通过free前向合并时通过prev_size去定位，合并没有被释放的内存，实现overlappping。</li>
+</ol>
+<h3 id="unlink"><a href="#unlink" class="headerlink" title="unlink"></a>unlink</h3><p>对unlink的利用，其实是对chunk进行内存布局，然后借助unlink操作来达成<strong>修改指针</strong>的效果。</p>
+<p>如果不考虑保护和针对large bin的操作的话，unlink主要的操作是：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//P是要取出的chunk</span></span><br><span class="line">FD=P-&gt;fd;<span class="comment">//FD为P的下一个chunk</span></span><br><span class="line">BK=P-&gt;bk;<span class="comment">//BK为P的前一个chunk</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//在fd和bk的双向链表中去掉P</span></span><br><span class="line">FD-&gt;bk=BK;</span><br><span class="line">BK-&gt;fd=FD;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>重点在于后面对bk和fd的修改:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//在fd和bk的双向链表中去掉P</span></span><br><span class="line">FD-&gt;bk=BK;</span><br><span class="line">BK-&gt;fd=FD;</span><br><span class="line"></span><br><span class="line"><span class="comment">//等价于</span></span><br><span class="line">*(FD+<span class="number">0x18</span>)=BK</span><br><span class="line">*(BK+<span class="number">0x10</span>)=FD</span><br></pre></td></tr></table></figure>
+
+<p>因此，如果我们能让FD，即<strong>FD指向目标地址addr-0x18的位置，并且BK为我们想要修改为的内容value</strong>，而且*(value+0x10)可写，那么我们就可以修改addr为我们指定的内容value。（比如可以修改GOT表项）</p>
+<p>然而现在的libc中，<strong>进行赋值之前</strong>有对fd和bk的检查:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// fd bk</span></span><br><span class="line"><span class="keyword">if</span> (__builtin_expect (FD-&gt;bk != P || BK-&gt;fd != P, <span class="number">0</span>))                      </span><br><span class="line">  malloc_printerr (check_action, <span class="string">&quot;corrupted double-linked list&quot;</span>, P, AV);  </span><br></pre></td></tr></table></figure>
+
+<p>为了绕过检查，我们需要伪造FD和BK，使其满足下列条件之后才能赋值。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">*(fakeFD+<span class="number">0x18</span>)==P==*(fakeBK+<span class="number">0x10</span>)</span><br><span class="line"><span class="comment">//因此fakeFD=&amp;P-0x18</span></span><br><span class="line"><span class="comment">//fakeBK=&amp;P-0x10</span></span><br></pre></td></tr></table></figure>
+
+<p>执行unlink时</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">*(fakeFD+<span class="number">0x18</span>)=fakeBK</span><br><span class="line">*(fakeBK+<span class="number">0x10</span>)=fakeFD</span><br><span class="line"><span class="comment">//由于*(FD+0x18)==P==*(BK+0x10)</span></span><br><span class="line"><span class="comment">//因此等价于</span></span><br><span class="line"><span class="comment">//*P=&amp;P-0x10</span></span><br><span class="line"><span class="comment">//*P=&amp;P-0x18</span></span><br></pre></td></tr></table></figure>
+
+<p>最终*P=&amp;P-0x18，即P指向了比原来低0x18的位置。</p>
+<p>通过这种方法，如果我们能控制small bin或unsorted bin中chunk的fd和bk，并且我们能知道这个chunk的地址，那么就可以利用unlink使得该chunk指针ptr指向ptr-0x18的位置。</p>
+<p>过程：</p>
+<ol>
+<li>修改ptr-&gt;fd=ptr-0x18</li>
+<li>修改ptr-&gt;bk=ptr-0x10</li>
+<li>触发unlink</li>
+</ol>
+<h3 id="Use-After-Free-UAF"><a href="#Use-After-Free-UAF" class="headerlink" title="Use After Free(UAF)"></a>Use After Free(UAF)</h3><p>就像它的名字一样，UAF指的是1个chunk被释放后被使用，主要有2种情况：</p>
+<ol>
+<li>chunk被释放后，对应的指针赋值为NULL，但其他函数执行前没有进行检查，仍会对其进行操作，导致程序崩溃。</li>
+<li>chunk被释放后，对应的指针没有被赋NULL，此时其他函数可以正常对该chunk进行操作。</li>
+</ol>
+<p>一般第2种情况是我们利用的。UAF需要搭配其他方法进行使用，比如根据unsorted bin chunk的特性，用函数输出已经释放的chunk中的内容，从而泄露信息；或者用来修改fast bin chunk的fd，达到fast bin attack…</p>
+<h3 id="Fast-bin-Attack"><a href="#Fast-bin-Attack" class="headerlink" title="Fast bin Attack"></a>Fast bin Attack</h3><p>Fastbin Attack通常指基于fastbin机制的利用，利用的前提是：</p>
+<ul>
+<li>存在堆溢出或UAF等能控制chunk内容的漏洞</li>
+<li>漏洞发生于fast bin chunk</li>
+</ul>
+<p>Fastbin Attack主要利用的是fastbin的特殊机制，fastbin是使用<strong>单链表(fd)<strong>来维护释放的堆块的，并且由fastbin管理的 chunk</strong>即使被释放，其next_chunk的prev_inuse位也不会被清空</strong>。 </p>
+<h4 id="Fastbin-Double-Free"><a href="#Fastbin-Double-Free" class="headerlink" title="Fastbin Double Free"></a>Fastbin Double Free</h4><p>Fastbin Double Free通过对1个chunk的多次释放，改变fast bin中fd的指向。其利用的主要是<strong>fastbin不会清空prev_inuse位</strong>，并且在释放时，<strong>只检查当前释放的chunk与bin头结点指向的chunk是否相同</strong>，而没有检查后续的chunk的机制。</p>
+<p>因此，我们只要在两次释放之间隔着一个不同的chunk，就可以实现Fastbin Double Free。</p>
+<p>在释放之后，fast bin的结构如下：</p>
+<p><img src="./heap_attack/FastbinDoubleFree.png" alt="FastbinDoubleFree"></p>
+<p>在1次malloc之后，我们可以使用多个指针控制同一个堆块，这可以用于篡改一些堆块中的关键数据域或者是实现类似于类型混淆的效果。如果<strong>更进一步修改 fd 指针</strong>，则能够实现<strong>任意地址分配堆块</strong>的效果 (首先要通过验证，即size符合当前fast bin的大小)，这就相当于任意地址任意写的效果。</p>
+<h4 id="House-of-Spirit"><a href="#House-of-Spirit" class="headerlink" title="House of Spirit"></a>House of Spirit</h4><p>House of Spirit是通过在目标位置<strong>伪造</strong>fastbin chunk，并让其被释放，从而达到<strong>申请指定地址内存</strong>的目的。</p>
+<p>由于free的特性，House of Spirit的重点在于<strong>修改指定地址前后的内容使其能绕过free的检测</strong>。</p>
+<p>需要的绕过：</p>
+<ul>
+<li>fake chunk的<strong>ISMMAP位不能为1</strong>，因为 free 时，如果是mmap的chunk，会单独处理。</li>
+<li>fake chunk<strong>地址需要对齐</strong>。</li>
+<li>fake chunk的<strong>size大小需要满足对应的fastbin</strong> 的需求，同时也得<strong>对齐</strong>。</li>
+<li>fake chunk的next chunk的大小<strong>不能小于2 * SIZE_SZ</strong>，同时也<strong>不能大于av-&gt;system_mem</strong> 。</li>
+<li>fake chunk对应的fastbin<strong>链表头部不能是该fake chunk</strong>，即不能构成double free的情况。</li>
+</ul>
+<p>在达成条件之后，将该fake chunk释放，再重新malloc就能得到该部分内存。</p>
+<h4 id="Arbitrary-Alloc"><a href="#Arbitrary-Alloc" class="headerlink" title="Arbitrary Alloc"></a>Arbitrary Alloc</h4><p>由于fast bin中通过fd指向下一个chunk，如果我们<strong>将想要获取的内存看作一个fake chunk</strong>，那么只要其<strong>size的大小满足fast bin的要求</strong>，并且<strong>控制fast bin中的fd指向fake chunk</strong>，那么我们就能将这个fake chunk申请过来，实现任意读或任意写。</p>
+<p>要让size满足要求，我们可以<strong>逐字节进行调节（参考malloc到__malloc_hook的过程）</strong>，找到在fast bin size范围内的大小，且能包含我们想要的内存即可。（由于不用绕过free，可以不用对齐）</p>
+<p>要控制fast bin中chunk的fd，可以利用Fastbin Double Free、UAF、overlapping、堆溢出等方法。</p>
+<h3 id="Unsorted-bin-Attack"><a href="#Unsorted-bin-Attack" class="headerlink" title="Unsorted bin Attack"></a>Unsorted bin Attack</h3><p>Unsorted bin Attack是对unsorted bin机制的利用。</p>
+<h4 id="Unsorted-bin-Leak"><a href="#Unsorted-bin-Leak" class="headerlink" title="Unsorted bin Leak"></a>Unsorted bin Leak</h4><p>Unsort bin Leak主要是利用了unsorted bin使用<strong>fd和bk的双向链表</strong>管理chunk的机制，<strong>始终会有一个chunk的fd和一个chunk的bk指向unsorted bin的头结点，而头结点在main_arena内部</strong>，与main_arena的偏移是固定的(96)。特别的，当只有1个chunk的时候，这个chunk的fd和bk都会指向一个unsorted bin的头结点。</p>
+<p>因此，借助UAF、overlapping等方式，我们可以泄露unsorted bin头结点的地址，从而得到main_arena，再利用与main_arena固定偏移0x10的__malloc_hook得到出libc。（也可以通过malloc_trim()函数得出）</p>
+<h4 id="Unsorted-bin-Attack-1"><a href="#Unsorted-bin-Attack-1" class="headerlink" title="Unsorted bin Attack"></a>Unsorted bin Attack</h4><p>Unsorted bin Attack利用了unsorted bin的特性，当一个chunk从unsorted bin中取出的时候，会将unsorted bin的地址写入到bck-&gt;fd的位置（bck==P-&gt;bk）。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//相当于将unsorted bin放在了victim的位置，修改bck和bin的fd和bk指针</span></span><br><span class="line">bck = victim-&gt;bk;</span><br><span class="line">unsorted_chunks(av)-&gt;bk = bck;</span><br><span class="line">bck-&gt;fd = unsorted_chunks(av);</span><br></pre></td></tr></table></figure>
+
+<p>换而言之，如果我们能<strong>控制一个unsorted bin chunk的bk</strong>，并且将其取出，那么就能<strong>在bk+0x10的位置写入unsorted bin的地址</strong>。这个地址通常是一个<strong>很大的值</strong>，借助这点，我们可以<strong>控制程序执行流程</strong>（改变判断条件，修改循环次数），甚至可以修改heap中的global_max_fast来<strong>使得更大的chunk可以被视为fast bin</strong>，这样我们就可以去执行一些fast bin attack了。</p>
+<h3 id="Large-bin-Attack"><a href="#Large-bin-Attack" class="headerlink" title="Large bin Attack"></a>Large bin Attack</h3><p>Large bin Attack利用的是chunk从unsorted bin进入到large bin时缺少检查。当malloc遍历unsorted bin时，如果该chunk<strong>不是刚好满足大小并且不满足切割条件</strong>的话，则会放入对应的bin中。而在放入large bin的时候，缺少了对nextsize指针的检查。通过Large bin Attack，可以<strong>将当前chunk的地址写入bk_nextsize+0x20的位置</strong>（类似unsorted bin attack）。</p>
+<p>在2.29及以下版本的glibc中，根据chunk的大小有不同的利用。</p>
+<p>如果chunk<strong>小于</strong>该large bin中最小的chunk的时候会执行:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">fwd = bck; <span class="comment">//使得fwd=large bin</span></span><br><span class="line">bck = bck-&gt;bk; <span class="comment">//使得bck=末尾的chunk(最小的chunk)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//下面均没有对victim的nextsize指针进行检测就直接赋值了</span></span><br><span class="line">victim-&gt;fd_nextsize = fwd-&gt;fd;</span><br><span class="line">victim-&gt;bk_nextsize = fwd-&gt;fd-&gt;bk_nextsize;</span><br><span class="line">fwd-&gt;fd-&gt;bk_nextsize = victim-&gt;bk_nextsize-&gt;fd_nextsize = victim;</span><br><span class="line"><span class="comment">//fwd为当前chunk的fd指向的chunk，在这种情况下为large bin头，victim为当前chunk</span></span><br><span class="line"><span class="comment">//这条语句的作用是：修改通过nextsize指针连接的相邻chunk的fd_nextsize和bk_nextsize，即在nextsize list中插入新的chunk</span></span><br></pre></td></tr></table></figure>
+
+<p>如果chunk<strong>大于</strong>该large bin中最小的chunk的时候会执行:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">victim-&gt;bk_nextsize-&gt;fd_nextsize = victim;</span><br></pre></td></tr></table></figure>
+
+<p>如果chunk<strong>等于</strong>该large bin中最小的chunk，则会使用其他方法插入，所以此时无法利用。</p>
+<p>在2.30版本新加入了对largebin跳表的完整性检查，使chunk大于链表中最小的chunk时的利用失效，必须使chunk<strong>小于</strong>链表中最小的chunk，通过下面的语句将当前chunk的地址写入bk_nextsize+0x20的位置。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">victim-&gt;bk_nextsize-&gt;fd_nextsize = victim;</span><br></pre></td></tr></table></figure>
+
+<p>Large bin Attack的条件：</p>
+<ol>
+<li>可以修改一个large bin chunk的 data</li>
+<li>从unsorted bin中来的large bin chunk要紧跟在被构造过的chunk的后面</li>
+</ol>
+<p>作用：</p>
+<ol>
+<li>通过large bin attack可以辅助Tcache Stash Unlink+攻击</li>
+<li>可以修改_IO_list_all便于伪造_IO_FILE 结构体进行FSOP。</li>
+</ol>
+<h3 id="Tcache-Attack"><a href="#Tcache-Attack" class="headerlink" title="Tcache Attack"></a>Tcache Attack</h3><p>由于Tcache本身检查约等于0，因此Tcache的利用都方便许多。其本身可以看作是没有什么检查的fast bin。</p>
+<h4 id="Tcache-Poisoning"><a href="#Tcache-Poisoning" class="headerlink" title="Tcache Poisoning"></a>Tcache Poisoning</h4><p>主要利用的是tcache_get()从tcache中获取chunk的时候几乎没有检查，会利fd指针逐个取出chunk。因此，只需要<strong>将tcache中的chunk的fd指向任意内存即可将其取出</strong>。</p>
+<h4 id="Tcache-Dup（Tcache-Double-free）"><a href="#Tcache-Dup（Tcache-Double-free）" class="headerlink" title="Tcache Dup（Tcache Double free）"></a>Tcache Dup（Tcache Double free）</h4><p>类似于fast bin dup(Fast bin Double free)，不过利用的是tcache_put()中的不严谨，<strong>可以直接连续free同一个chunk来做到double free</strong>。</p>
+<p>但在glibc2.29之后，tcache中增加了对此的检查，会在tcache_entry中引入一个标志key，表示chunk是否已经在该tcache bin中，每个chunk在放入tcache时都会检查key。</p>
+<p>即便如此有些方法能绕过检查的，不过需要利用fast bin double free和tcache stash机制。</p>
+<p>(1) 首先需要将tcache填满并实现fast bin double free</p>
+<p><code>tcache</code>中为：<code>C6-&gt;C5-&gt;C4-&gt;C3-&gt;C2-&gt;C1-&gt;C0</code>，<code>fast bin</code>中为：<code>C7-&gt;C8-&gt;C7</code>。</p>
+<p>(2) 之后，为了分配到<code>fast bin</code>，需要先申请<code>7</code>个，让<code>tcache</code>为空（或<code>calloc</code>），再次申请时就会返回<code>fast bin</code>中的<code>C7</code>，同时由于<code>tcache stash</code>机制，<code>fast bin</code>中剩下的<code>C8</code>,<code>C7</code>均被放入了<code>tcache bin</code>。此时，在<code>C7</code>的<code>fd</code>字段写入<code>target_addr</code>（相当于获得了<code>Edit</code>功能），于是<code>target_addr</code>也被放入了<code>tcache bin</code>，因此这里<code>target_addr</code>处甚至不需要伪造<code>size</code>（<code>target_addr</code>指向<code>user data</code>区）。<br>(3) 此时，<code>tcache bin</code>中单链表为：<code>C8-&gt;C7-&gt;target_addr</code>，再申请到<code>target_addr</code>，从而得到了一个真正的任意写。</p>
+<h4 id="Tcache-Perthread-Corruption"><a href="#Tcache-Perthread-Corruption" class="headerlink" title="Tcache Perthread Corruption"></a>Tcache Perthread Corruption</h4><p>tcache_perthread_struct是整个tcache的管理结构，而<strong>这个结构是存储在堆上</strong>的。如果能控制这个结构体，那么无论我们malloc的size是多少，地址都是可控的。不过这需要我们利用其它方法来申请到这块内存。</p>
+<h4 id="Tcache-House-Of-Spirit"><a href="#Tcache-House-Of-Spirit" class="headerlink" title="Tcache House Of Spirit"></a>Tcache House Of Spirit</h4><p>原理是House Of Spirit，不过由于tcache检查的松散，因此更容易利用，我们<strong>可以不用管prev_inuse位</strong>，但其他条件仍是需要满足的。</p>
+<p>如：</p>
+<ul>
+<li>fake chunk的<strong>ISMMAP位不能为1</strong>，因为 free 时，如果是mmap的chunk，会单独处理。</li>
+<li>fake chunk<strong>地址需要对齐</strong>。</li>
+<li>fake chunk的next chunk的大小<strong>不能小于2 * SIZE_SZ</strong>，同时也<strong>不能大于av-&gt;system_mem</strong> 。</li>
+</ul>
+<h4 id="Tcache-Stashing-Unlink-Attack"><a href="#Tcache-Stashing-Unlink-Attack" class="headerlink" title="Tcache Stashing Unlink Attack"></a>Tcache Stashing Unlink Attack</h4><p>这种攻击利用的是tcache有<strong>剩余</strong>时，同大小的small bin会放进tcache中。在获取到一个smallbin中的一个chunk后会如果tcache仍有足够空闲位置，会将<strong>剩余的</strong>small bin链入tcache，在这个过程中<strong>只对第一个bin进行了完整性检查</strong>。</p>
+<p>当攻击者可以写一个small bin的bk指针时，其可以在任意地址上写一个libc地址 (类似 unsorted bin attack 的效果)。构造得当的情况下也可以分配 fake chunk 到任意地址。</p>
+<p>而calloc分配堆块时<strong>不从tcache中选取，直接从small bin中取</strong>，可以触发攻击。</p>
+<p>具体利用：</p>
+<p>想办法改写smallbin中<strong>倒数第二个chunk的bk</strong>指向fake chunk，在利用calloc取出了small bin中的一个chunk后，剩余的chunk会放入tcache中。Small bin遵循<strong>FIFO</strong>，<strong>利用bk进行遍历</strong>，因此倒数第二个chunk会先放入tcache，fake chunk会后放入tcache。由于tcache遵循<strong>LIFO</strong>，因此此时处于tcache头的是fake chunk，下一次malloc即可得到其内存。</p>
+<h4 id="libc-leak"><a href="#libc-leak" class="headerlink" title="libc leak"></a>libc leak</h4><p>算是tcache带来的一点点麻烦，要用到bin的话需要先将对应的tcache填满。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/heap%20struct/" rel="prev" title="Heap Struct">
+      <i class="fa fa-chevron-left"></i> Heap Struct
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/02/heap_operation/" rel="next" title="Heap Operation">
+      Heap Operation <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A0%86%E6%BA%A2%E5%87%BA"><span class="nav-number">1.</span> <span class="nav-text">堆溢出</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%A0%86%E7%9A%84Off-By-One"><span class="nav-number">2.</span> <span class="nav-text">堆的Off-By-One</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#chunk-extend-and-overlapping%EF%BC%88%E5%A5%BD%E5%83%8F%E8%BF%98%E6%9C%89chunk-shrink%E7%9A%84%EF%BC%8C%E4%BD%86%E6%B2%A1%E6%89%BE%E8%B5%84%E6%96%99%EF%BC%89"><span class="nav-number">3.</span> <span class="nav-text">chunk extend and overlapping（好像还有chunk shrink的，但没找资料）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#unlink"><span class="nav-number">4.</span> <span class="nav-text">unlink</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Use-After-Free-UAF"><span class="nav-number">5.</span> <span class="nav-text">Use After Free(UAF)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Fast-bin-Attack"><span class="nav-number">6.</span> <span class="nav-text">Fast bin Attack</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Fastbin-Double-Free"><span class="nav-number">6.1.</span> <span class="nav-text">Fastbin Double Free</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#House-of-Spirit"><span class="nav-number">6.2.</span> <span class="nav-text">House of Spirit</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Arbitrary-Alloc"><span class="nav-number">6.3.</span> <span class="nav-text">Arbitrary Alloc</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Unsorted-bin-Attack"><span class="nav-number">7.</span> <span class="nav-text">Unsorted bin Attack</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Unsorted-bin-Leak"><span class="nav-number">7.1.</span> <span class="nav-text">Unsorted bin Leak</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Unsorted-bin-Attack-1"><span class="nav-number">7.2.</span> <span class="nav-text">Unsorted bin Attack</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Large-bin-Attack"><span class="nav-number">8.</span> <span class="nav-text">Large bin Attack</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Tcache-Attack"><span class="nav-number">9.</span> <span class="nav-text">Tcache Attack</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Tcache-Poisoning"><span class="nav-number">9.1.</span> <span class="nav-text">Tcache Poisoning</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Tcache-Dup%EF%BC%88Tcache-Double-free%EF%BC%89"><span class="nav-number">9.2.</span> <span class="nav-text">Tcache Dup（Tcache Double free）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Tcache-Perthread-Corruption"><span class="nav-number">9.3.</span> <span class="nav-text">Tcache Perthread Corruption</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Tcache-House-Of-Spirit"><span class="nav-number">9.4.</span> <span class="nav-text">Tcache House Of Spirit</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Tcache-Stashing-Unlink-Attack"><span class="nav-number">9.5.</span> <span class="nav-text">Tcache Stashing Unlink Attack</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#libc-leak"><span class="nav-number">9.6.</span> <span class="nav-text">libc leak</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

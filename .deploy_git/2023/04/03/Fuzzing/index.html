@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="模糊测试 （fuzz testing, fuzzing）是一种软件测试技术。其核心思想是自动或半自动的生成随机数据输入到一个程序中，并监视程序异常，如崩溃，断言(assertion)失败，以发现可能的程序错误，比如内存泄漏。模糊测试常常用于检测软件或计算机系统的安全漏洞。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Fuzzing">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/04/03/Fuzzing/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="模糊测试 （fuzz testing, fuzzing）是一种软件测试技术。其核心思想是自动或半自动的生成随机数据输入到一个程序中，并监视程序异常，如崩溃，断言(assertion)失败，以发现可能的程序错误，比如内存泄漏。模糊测试常常用于检测软件或计算机系统的安全漏洞。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-04-03T02:13:03.000Z">
+<meta property="article:modified_time" content="2023-04-03T07:24:48.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="fuzzing">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/04/03/Fuzzing/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Fuzzing | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/04/03/Fuzzing/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Fuzzing
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-04-03 10:13:03 / 修改时间：15:24:48" itemprop="dateCreated datePublished" datetime="2023-04-03T10:13:03+08:00">2023-04-03</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/fuzzing/" itemprop="url" rel="index"><span itemprop="name">fuzzing</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>模糊测试 （fuzz testing, fuzzing）是一种软件测试技术。其核心思想是自动或半自动的生成随机数据输入到一个程序中，并监视程序异常，如崩溃，断言(assertion)失败，以发现可能的程序错误，比如内存泄漏。模糊测试常常用于检测软件或计算机系统的安全漏洞。</p>
+<span id="more"></span>
+
+<h2 id="Fuzzing原理"><a href="#Fuzzing原理" class="headerlink" title="Fuzzing原理"></a>Fuzzing原理</h2><p>黑盒测试是一种检验程序功能是否可以正常使用的测试方法。它将程序模块看作是一个<strong>不能打开的黑盒</strong>，<strong>忽略程序模块的内部逻辑结构</strong>，对程序<strong>接口</strong>进行测试，检查程序能否正常的接受输入数据并产生正确的输出。</p>
+<p><strong>灰盒</strong>模糊测试也是越来越流行的检测方式之一，它利用<strong>检测</strong>而不是程序分析来收集有关程序的信息。例如在程序中进行<strong>插桩</strong>，可以获得一条fuzzing用例在执行时对应的代码覆盖率。如果接触到了更多的程序内容，它就把这一条用例记录下来，用于改进fuzzing的效果。</p>
+<p>Fuzzing技术是一种基于<strong>黑盒（或灰盒）</strong>的测试技术，通过<strong>自动化生成</strong>并执行大量的随机测试用例来发现产品或协议的未知漏洞。</p>
+<p>对于复杂的程序，输入用例的数量极大，不可能对其进行穷举，只能对部分可能的异常情景进行测试。然而人脑难以考虑到所有异常情景的组合，Fuzzing的出现就是为了解决这个问题。Fuzzing技术本质是依靠<strong>随机函数生成随机测试用例</strong>来进行测试验证。</p>
+<h2 id="Fuzzing的基本算法"><a href="#Fuzzing的基本算法" class="headerlink" title="Fuzzing的基本算法"></a>Fuzzing的基本算法</h2><p>Fuzzing引擎算法中，测试用例的生成方式主要有2种：</p>
+<ol>
+<li><p>基于变异：根据已知数据样本通过变异的方法生成新的测试用例；</p>
+</li>
+<li><p>基于生成：根据已知的协议或接口规范进行建模，生成测试用例；</p>
+</li>
+</ol>
+<p>一般Fuzzing工具中，都会综合使用这两种生成方式，不同的Fuzzer的用例生成方式有所不同。</p>
+<p>这两种算法只是一般Fuzzing生成测试用例的算法的基本思想，在此之上实现的算法有太多了。</p>
+<h2 id="Fuzzer的工作流程"><a href="#Fuzzer的工作流程" class="headerlink" title="Fuzzer的工作流程"></a>Fuzzer的工作流程</h2><p>Fuzzer需要通过策略不断生成随机数据并将其输入给程序，并检查程序是否有<code>crash</code>，之后根据结果优化生成策略，循环上述步骤持续地进行Fuzzing。</p>
+<p>上述步骤只是一个极简的Fuzzer工作流程，对不同的Fuzzer工作流程可能会有一些差别，但也可从中看出，其中最重要的就是<strong>生成随机数据的部分</strong>。</p>
+<p>部分Fuzzer还用到了灰盒测试的技术，在程序之中<strong>插桩</strong>来<strong>检测生成用例的代码覆盖率</strong>。</p>
+<h3 id="AFL-的工作流程"><a href="#AFL-的工作流程" class="headerlink" title="AFL++的工作流程"></a>AFL++的工作流程</h3><p>AFL++是 Google 的 AFL 的一个分支，是一个基于突变的Fuzzer，通过遗传算法生成新的随机数据。</p>
+<ol>
+<li>从源码编译程序时进行插桩，以记录代码覆盖率（Code Coverage）；</li>
+<li>选择一些输入文件，作为初始测试集加入输入队列（queue）；</li>
+<li>将队列中的文件按一定的策略进行“突变”；</li>
+<li>如果经过变异文件更新了覆盖范围，则将其保留添加到队列中;</li>
+<li>上述过程会一直循环进行，期间触发了crash的文件会被记录下来</li>
+</ol>
+<p><strong>执行流：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">A[插桩] --&gt; B[初始化队列]</span><br><span class="line">B --&gt; C[突变]</span><br><span class="line">C --&gt; D[输入程序]</span><br><span class="line">D --&gt; E[检测运行结果]</span><br><span class="line">E --&gt; F[更新队列]</span><br><span class="line">F --&gt; G[记录crash]</span><br><span class="line">G --&gt; C</span><br></pre></td></tr></table></figure>
+
+<p><strong>数据流：</strong></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">graph LR</span><br><span class="line">A[初始测试集] --&gt;|文件集| B</span><br><span class="line">B[队列] --&gt;|文件| C</span><br><span class="line">C[变异引擎] --&gt;|突变文件| D[程序]</span><br><span class="line">D --&gt;|运行结果| F[检测引擎]</span><br><span class="line">F --&gt;|突变文件 if 更新了覆盖范围| B</span><br><span class="line">F --&gt;|crash文件| G[记录crash]</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>对AFL++而言，生成随机数据的部分，即<strong>变异引擎</strong>是最重要的部分。</p>
+<h2 id="Fuzzer的结构"><a href="#Fuzzer的结构" class="headerlink" title="Fuzzer的结构"></a>Fuzzer的结构</h2><p>先从最简单的Fuzzer开始：</p>
+<ul>
+<li>变异引擎：用于根据原有的文件产生新的文件（一般以数据的形式进行变异）</li>
+<li>控制模块：<ul>
+<li>存储Fuzzer的重要参数</li>
+<li>控制Fuzzer不断工作<ul>
+<li>给程序输入数据</li>
+<li>判断程序接受输入后的结果</li>
+<li>根据运行结果执行不同的操作</li>
+</ul>
+</li>
+<li>显示Fuzzer的运行状态</li>
+</ul>
+</li>
+</ul>
+<p>这应该是最基本的Fuzzer结构。</p>
+<p>当然在此基础之上有许多值得优化的部分：</p>
+<ul>
+<li>引入灰盒测试思想（插桩之类的技术）</li>
+<li><strong>变异引擎的变异策略（最重要的）</strong></li>
+<li>结合<strong>生成式</strong>的策略</li>
+<li>对<code>crash</code>的区分和描述</li>
+<li>…</li>
+</ul>
+<h2 id="Fuzzer性能的衡量标准"><a href="#Fuzzer性能的衡量标准" class="headerlink" title="Fuzzer性能的衡量标准"></a>Fuzzer性能的衡量标准</h2><p>要判断对Fuzzer的改进是否有效，我们需要知道怎样的Fuzzer是一个好的Fuzzer，这需要一些指标去评价一个Fuzzer。</p>
+<ul>
+<li>一次fuzzing所需时间</li>
+<li><code>crash</code>产生的速率</li>
+<li>路径覆盖率</li>
+<li>覆盖率粒度</li>
+<li>…</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/fuzzing/" rel="tag"># fuzzing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/03/29/nkctf_note/" rel="prev" title="nkctf_note">
+      <i class="fa fa-chevron-left"></i> nkctf_note
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/04/09/Untitled/" rel="next" title="">
+       <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Fuzzing%E5%8E%9F%E7%90%86"><span class="nav-number">1.</span> <span class="nav-text">Fuzzing原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Fuzzing%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%AE%97%E6%B3%95"><span class="nav-number">2.</span> <span class="nav-text">Fuzzing的基本算法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Fuzzer%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-number">3.</span> <span class="nav-text">Fuzzer的工作流程</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#AFL-%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-number">3.1.</span> <span class="nav-text">AFL++的工作流程</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Fuzzer%E7%9A%84%E7%BB%93%E6%9E%84"><span class="nav-number">4.</span> <span class="nav-text">Fuzzer的结构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Fuzzer%E6%80%A7%E8%83%BD%E7%9A%84%E8%A1%A1%E9%87%8F%E6%A0%87%E5%87%86"><span class="nav-number">5.</span> <span class="nav-text">Fuzzer性能的衡量标准</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

