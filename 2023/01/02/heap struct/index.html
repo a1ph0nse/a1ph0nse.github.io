@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="堆是由操作系统内核或堆管理器动态分配的，只有在程序需要时才会被分配。在程序运行过程中，堆可以提供动态分配的内存，允许程序申请大小未知的内存。堆其实就是程序虚拟地址空间的一块连续的线性区域，它由低地址向高地址方向增长。 堆通常由堆管理器ptmalloc2来管理，堆管理器位于内核层和用户层之间，会响应用户的请求并管理堆。系统调用开销巨大，只有堆管理器不能满足需求时，才会调用系统内核进行操作。 需要注意">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Heap Struct">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/heap%20struct/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="堆是由操作系统内核或堆管理器动态分配的，只有在程序需要时才会被分配。在程序运行过程中，堆可以提供动态分配的内存，允许程序申请大小未知的内存。堆其实就是程序虚拟地址空间的一块连续的线性区域，它由低地址向高地址方向增长。 堆通常由堆管理器ptmalloc2来管理，堆管理器位于内核层和用户层之间，会响应用户的请求并管理堆。系统调用开销巨大，只有堆管理器不能满足需求时，才会调用系统内核进行操作。 需要注意">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-01T16:00:40.000Z">
+<meta property="article:modified_time" content="2023-01-04T08:18:34.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/heap%20struct/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Heap Struct | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/heap%20struct/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Heap Struct
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-02 00:00:40" itemprop="dateCreated datePublished" datetime="2023-01-02T00:00:40+08:00">2023-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-01-04 16:18:34" itemprop="dateModified" datetime="2023-01-04T16:18:34+08:00">2023-01-04</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>堆是由操作系统内核或堆管理器<strong>动态</strong>分配的，只有在程序需要时才会被分配。<br>在程序运行过程中，堆可以提供动态分配的内存，允许程序申请<strong>大小未知</strong>的内存。堆其实就是程序虚拟地址空间的一块<strong>连续的线性</strong>区域，它由<strong>低地址向高地址</strong>方向增长。</p>
+<p>堆通常由堆管理器ptmalloc2来管理，堆管理器位于内核层和用户层之间，会响应用户的请求并管理堆。系统调用开销巨大，只有堆管理器不能满足需求时，才会调用系统内核进行操作。</p>
+<p>需要注意的是，在内存分配与使用的过程中，Linux有这样的一个基本内存管理思想，<strong>只有当真正访问一个地址的时候，系统才会建立虚拟页面与物理页面的映射关系</strong>。 所以虽然操作系统已经给程序分配了很大的一块内存，但是这块内存其实只是虚拟内存。只有当用户使用到相应的内存时，系统才会真正分配物理页面给用户使用。</p>
+<span id="more"></span>
+<h2 id="堆的微观结构"><a href="#堆的微观结构" class="headerlink" title="堆的微观结构"></a>堆的微观结构</h2><h3 id="chunk"><a href="#chunk" class="headerlink" title="chunk"></a>chunk</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    <span class="comment">//当物理地址上的前一个chunk在使用时，prev_size用于存放前一个chunk的数据，否则，如果前一个chunk被释放了，则存放前一个chunk的大小</span></span><br><span class="line">    INTERNAL_SIZE_T prev_size;  </span><br><span class="line">    <span class="comment">//存放当前chunk的实际大小（包含prev_size和size字段），chunk的大小都为2*SIZE_SZ(SIZE_SZ 32bit为4byte，64bit为8byte)的整数倍，因此size的后面3位都不会用上，被用于作为标志位。</span></span><br><span class="line">    <span class="comment">//最低位为prev_inuse，用于指示前一个chunk是否释放，prev_inuse==1为使用，==0为释放</span></span><br><span class="line">    <span class="comment">//第二位指示是否为memory_mapped分配的内存，1表示是，0 表示是 heap</span></span><br><span class="line">    <span class="comment">//第三位指示是否是主分配区main_arena分配的内存，1表示不是，0表示是</span></span><br><span class="line">    INTERNAL_SIZE_T size;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">//下面为user data部分，用户申请到的指针指向的是下面的部分，若chunk被使用则下面的内存全部用于存放数据，否则才会有下面的结构</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//fd和bk用于bin中链表连接，fd指向下一个，bk指向前一个。</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk</span>;</span></span><br><span class="line"></span><br><span class="line">    <span class="comment">//fd_nextsize和bk_nextsize用于large bin，分别指向前一个或后一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针（因为large bin中同一头结点下的chunk的大小不一定相同，large bin允许有一定的公差）</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd_nextsize</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk_nextsize</span>;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="bin"><a href="#bin" class="headerlink" title="bin"></a>bin</h3><p>为了减少开销，释放chunk的时候，堆管理器不会马上返回给内核，而是用bin对chunk进行暂时的管理。这样，当再次用户再次申请内存的时候，先从chunk中查找是否有正好满足的，如果有则直接取出，达到减少系统调用的次数的目的。</p>
+<p>为了方便管理，堆管理器按照chunk的大小，将bin分为4类，分别管理不同大小的chunk，分别为fast bins,small bins,large bins和unsorted bin。除了unsorted bin之外，其他的每种bin都会维护多个链表，根据chunk的大小再进行细分。<strong>fast bin由fastbinY数组管理，其余的unsorted bin,small bin,large bin则由一个bin数组管理。</strong></p>
+<h3 id="fast-bins"><a href="#fast-bins" class="headerlink" title="fast bins"></a>fast bins</h3><p>fast bin是所有bin中操作最快的，也是最常用的，通常存放0x10到0x80的chunk，当在fast bins范围内的chunk被释放时，会<strong>直接</strong>被放到fast bins中。fastbinY这个数组用于实现fast bin，这个数组保存了fast bin的头结点，每一个头结点都指向同一大小的fast bin chunk，<strong>头结点的prev_size和size字段被省去</strong>。</p>
+<p>fast bin中采用<strong>单向链表</strong>对chunk进行组织,<strong>即仅使用fd指针</strong>，并且遵循<strong>LIFO(先进后出)<strong>的原则，fast bin的</strong>头结点会指向最后一个</strong>加入该fast bin的chunk。加入chunk时，先让chunk指向头结点指向的chunk，再让头结点指向该chunk；取出chunk的时候通过头结点取出最后加入的chunk。</p>
+<p>fast bin中的chunk大小都比较小，因为小的内存经常会用到，但如果释放后就被合并，那么下次申请时就会再需要分割，fast bin会减少这种合并，<strong>fast bin chunk的prev_inuse位都为1，用于防止合并</strong>。</p>
+<p>fast bin特性：</p>
+<ol>
+<li>fast bin使用fd，通过单向链表对chunk进行组织</li>
+<li>fast bin遵循LIFO的规则</li>
+<li>fast bin chunk prev_inuse位为1，不会被合并</li>
+<li>fast bin中fd指向的是prev_size位置，也就是chunk的开头位置</li>
+<li>大小在fast bin范围内的chunk被释放时会直接放入fast bin(如果没有tcache或tcache满了)</li>
+</ol>
+<h3 id="unsorted-bin"><a href="#unsorted-bin" class="headerlink" title="unsorted bin"></a>unsorted bin</h3><p>unsorted bin中存放的是<strong>不符合fast bin大小且不与top chunk相邻</strong>的chunk，当这样的chunk会释放的时候，<strong>首先</strong>会被放入unsorted bin,作为放入small bin和large bin的<strong>缓冲</strong>，<strong>unsorted bin的头结点中的pre_size和size都被省去，只有fd和bk有作用</strong>。</p>
+<p>unsorted bin 处于bin[1]处，因此unsorted bin 只有一个链表。unsorted bin 中的空闲 chunk 处于<strong>乱序</strong>状态，主要有两个来源：</p>
+<p>（1）当一个较大的 chunk 被<strong>分割</strong>成两半后，如果剩下的部分**大于MINSIZE(chunk的最小大小)**，就会被放到 unsorted bin 中。</p>
+<p>（2）释放一个不属于 fast bin 的 chunk，并且该 chunk 不和 top chunk 紧邻时，该 chunk 会被首先放到 unsorted bin 中。</p>
+<p>unsorted Bin 在使用的过程中，采用的遍历顺序是 <strong>FIFO</strong> ，并且使用fd和bk通过<strong>双向链表</strong>进行连接。<strong>当unsorted chunk中只有一个chunk的时候，那一个chunk的fd和bk都会指向的unsorted bin的头结点</strong>。</p>
+<p>unsorted bin的特性：</p>
+<ol>
+<li>unsorted bin只有一个</li>
+<li>unsorted bin遵循FIFO的规则</li>
+<li>unsorted bin使用fd和bk，通过双向链表连接chunk</li>
+<li>当unsorted bin只有一个chunk的时候，chunk的fd和bk都会指向unsorted bin的头结点（通常是main_arena+88高版本可能会+96）</li>
+<li>不属于fast bin且不与top chunk相邻的chunk被释放时会放入unsorted bin</li>
+<li>被分割后剩下的chunk如果大于chunk的最小大小，则会加入unsorted bin</li>
+</ol>
+<h3 id="small-bins"><a href="#small-bins" class="headerlink" title="small bins"></a>small bins</h3><p>small bins在bin中从bin[2]一直到bin[63],存放的是小于512B的chunk，<strong>工作范围包含了fast bins</strong>,small bins 中每个 chunk 的大小与其所在的 bin 的 index 的关系为：chunk_size = 2 * SIZE_SZ *index</p>
+<p>small bins中一共有62个循环双向链表，每个链表中存储的chunk<strong>大小都一致</strong>。此外，small bins中遵循<strong>FIFO</strong>的规则，所以同一个链表中先被释放的chunk会先被分配出去，bin的头结点指向<strong>最后被释放的chunk</strong>，也就是说，<strong>离bin头结点最远的chunk最先被分配</strong>。</p>
+<p>small bins的特性：</p>
+<ol>
+<li>small bins在bin中的index从2到63，共62个</li>
+<li>一个bin中的chunk的大小都相等，chunk_size=2 * SIZE_SZ * index</li>
+<li>small bins遵循FIFO的规则</li>
+<li>small bins使用fd和bk，通过双向链表连接chunk</li>
+</ol>
+<h3 id="large-bins"><a href="#large-bins" class="headerlink" title="large bins"></a>large bins</h3><p>large bins在bin中从bin[64]一直到bin[126],存放的是大于512B的chunk。bin中的每个chunk的<strong>大小不一定相同</strong>，但都是<strong>在一定范围之内</strong>。此外，63个bin被分为6类，每类bin中chunk的<strong>公差一致</strong>，第一类有32个，公差为64B，第二类有16个，公差为512B，第三类有8个，公差为4096B，第四类有4个，公差为32768B，第五类有2个，公差为262144B，第六类有1个，公差不限制。</p>
+<p>large bins采用双向链表进行连接，除了fd和bk的双向链表连接同一个large bin中前后的chunk之外，<strong>large bin中还会利用fd_nextsize和bk_nextsize进行连接</strong>。</p>
+<p>large bin中的chunk按照<strong>大小顺序</strong>排列，<strong>最大的接在头结点后</strong>，最小的接在尾部。</p>
+<p>fd_nextsize和bk_nextsize用于连接同一个large bin下不同大小的chunk，<strong>fd_nextsize会连接下一个比当前小的chunk，bk_nextsize会链接前一个比当前大的chunk</strong>，对相同大小的chunk，只有<strong>第一个</strong>chunk的fd_nextsize和bk_nextsize会指向，其余的都会赋0。</p>
+<p>fd_nextsize和bk_nextsize也构成了一个<strong>双向的循环链表</strong>，如果large bin中chunk的大小都相同，那么第一个chunk的fd_nextsize和bk_nextsize都会指向自己。</p>
+<p>large bins的特性：</p>
+<ol>
+<li>large bins在bin中的index从64到126,共63个</li>
+<li>一个large bin中的chunk的大小不一定相同，但都在一定范围（公差）内</li>
+<li>63个large bin中被分为6类，每类的公差相同</li>
+<li>large bin中的chunk按由大到小的顺序排布，头结点接的是最大的chunk</li>
+<li>large bin使用fd和bk，通过双向链表连接</li>
+<li>large bin利用fd_nextsize和bk_nextsize，指向比当前小和比当前大的chunk，构成双向循环链表</li>
+<li>large bin取出时会首先取出离头结点最近的（LIFO）</li>
+</ol>
+<h3 id="top-chunk"><a href="#top-chunk" class="headerlink" title="top chunk"></a>top chunk</h3><p>top chunk 就是处于当前堆的物理地址最高的chunk。程序第一次进行malloc的时候，heap会被分为两块，低地址的一块给用户，剩下的那块就是top chunk。</p>
+<p>top chunk虽然没被使用，但是不属于任何一个bin，当bin中的chunk不能满足用户需要时，就会<strong>从top chunk中分割新的chunk</strong>，余下的部分将作为新的top chunk。</p>
+<p>当释放的chunk与top chunk相邻且不在fast bin的范围内，那么这个chunk会被<strong>合并</strong>到top chunk中。因此，top chunk的<strong>prev_inuse位始终为1</strong>，否则前一个chunk就会被合并。</p>
+<h3 id="last-remainder"><a href="#last-remainder" class="headerlink" title="last remainder"></a>last remainder</h3><p>在用户使用 malloc 请求分配内存时，ptmalloc2 找到的 chunk 可能并不和申请的内存大小一致，这时候就将<strong>分割之后的剩余部分</strong>称之为last remainder chunk，unsort bin 也会存这一块。top chunk 分割剩下的部分不会作为last remainder.</p>
+<h3 id="tcache"><a href="#tcache" class="headerlink" title="tcache"></a>tcache</h3><p>在glibc2.26之后引入的新技术，提高了性能，但是由于<strong>舍弃了许多安全检查</strong>，带来了不小的风险。</p>
+<p>tcache的结构与fast bin有些类似，都是利用<strong>fd通过单向链表</strong>将<strong>相同大小</strong>的chunk链起来，且<strong>prev_inuse==1</strong>，但不同的是tcache中<strong>fd指向的是user data而不是chunk_addr</strong>。</p>
+<p>具体结构：</p>
+<p>每个线程都会维护一个tcache_perthread_struct，是整个tcache的管理结构，一共有TCACHE_MAX_BINS个计数器和TCACHE_MAX_BINS个tcache_entry。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">tcache_perthread_struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="type">char</span> counts[TCACHE_MAX_BINS];</span><br><span class="line">  tcache_entry *entries[TCACHE_MAX_BINS];</span><br><span class="line">&#125; tcache_perthread_struct;</span><br><span class="line"></span><br><span class="line"><span class="meta"># <span class="keyword">define</span> TCACHE_MAX_BINS                64</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>tcache_entry就相当于是fast bin的头结点</strong>，后面连接大小相同的chunk;其中的count记录了tcache_entry连接的free chunk的个数，一般最多为<strong>7</strong>个，<strong>超过7个则放入其他的bin</strong>。</p>
+<p><code>tcache_perthread_struct</code>本身也是一个堆块，大小为0x250，位于堆的开头。（<strong>因此可以被劫持</strong>）</p>
+<p>tcache与fast bin类似，是采用LIFO的单链表，每个bin内存在的堆块大小相同，大小从24~1032字节，一般每个bin最多存放7个。</p>
+<p>工作方式：</p>
+<p>在free的时候，会<strong>优先考虑放入tcache中</strong>，tcache中没有空位才会加入fast bin或者unsorted bin。与fast bin类似，tcache中chunk的<strong>prev_inuse位为1</strong>。</p>
+<p>在malloc的时候，也会<strong>优先从tcache中取出chunk（如果size在tcache范围0x408内）</strong>，如果tcache是空的，但fast bin、smalll bin中有对应size的chunk的话，则会<strong>将对应头结点下的其他chunk</strong>移到tcache的对应tcache_entry处，直到tcache被填满或bin被清空。如果是unsorted bin的话，则会将<strong>所有chunk</strong>移到tcache中继续处理。</p>
+<p>tcache采用tcache_put()和tcache_get()对chunk进行存取，这两个操作几乎没有安全保护，这是让tcache_entry[idx]指向新放入的chunk或取出tcache_entry[idx]指向的chunk，再修改count，并且不会修改prev_inuse。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/format/" rel="prev" title="格式化字符串漏洞的利用">
+      <i class="fa fa-chevron-left"></i> 格式化字符串漏洞的利用
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/02/heap_attack/" rel="next" title="Heap Basic Attack">
+      Heap Basic Attack <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A0%86%E7%9A%84%E5%BE%AE%E8%A7%82%E7%BB%93%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">堆的微观结构</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#chunk"><span class="nav-number">1.1.</span> <span class="nav-text">chunk</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#bin"><span class="nav-number">1.2.</span> <span class="nav-text">bin</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#fast-bins"><span class="nav-number">1.3.</span> <span class="nav-text">fast bins</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#unsorted-bin"><span class="nav-number">1.4.</span> <span class="nav-text">unsorted bin</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#small-bins"><span class="nav-number">1.5.</span> <span class="nav-text">small bins</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#large-bins"><span class="nav-number">1.6.</span> <span class="nav-text">large bins</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#top-chunk"><span class="nav-number">1.7.</span> <span class="nav-text">top chunk</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#last-remainder"><span class="nav-number">1.8.</span> <span class="nav-text">last remainder</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#tcache"><span class="nav-number">1.9.</span> <span class="nav-text">tcache</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

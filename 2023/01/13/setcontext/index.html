@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="setcontext是libc中的一个函数，其中的部分代码可以用来给大部分寄存器进行赋值，不仅可以用于控制寄存器，还能劫持程序流，通常在**堆利用并且开启沙箱时用来劫持程序流走orw**。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="setcontext">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/13/setcontext/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="setcontext是libc中的一个函数，其中的部分代码可以用来给大部分寄存器进行赋值，不仅可以用于控制寄存器，还能劫持程序流，通常在**堆利用并且开启沙箱时用来劫持程序流走orw**。">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2023-01-13T09:37:42.000Z">
+<meta property="article:modified_time" content="2023-01-13T14:22:48.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="setcontext">
+<meta name="twitter:card" content="summary">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/13/setcontext/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>setcontext | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/13/setcontext/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          setcontext
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-01-13 17:37:42 / 修改时间：22:22:48" itemprop="dateCreated datePublished" datetime="2023-01-13T17:37:42+08:00">2023-01-13</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p><code>setcontext</code>是<code>libc</code>中的一个函数，其中的部分代码可以用来给大部分寄存器进行赋值，不仅可以用于<strong>控制寄存器，还能劫持程序流</strong>，通常在**堆利用并且开启沙箱时用来劫持程序流走<code>orw</code>**。</p>
+<span id="more"></span>
+
+<p><code>setcontext</code>大致可以把2.27，2.29做为两个分界点。在2.27及以前，<code>setcontext</code><strong>以寄存器<code>rdi</code>为基准，对寄存器进行赋值，从<code>setcontext+53</code>开始</strong>利用；在2.29及以后，<code>setcontext</code><strong>以寄存器<code>rdx</code>为基准，对寄存器进行赋值，并且利用的代码有些许区别，在2.31以后从<code>setcontext+61</code>开始</strong>利用。</p>
+<h2 id="glibc-2-27及以前"><a href="#glibc-2-27及以前" class="headerlink" title="glibc-2.27及以前"></a>glibc-2.27及以前</h2><p>这里以2.27-3ubuntu1.6_amd64为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">0x0000000000052050 &lt;+0&gt;:		push   rdi</span><br><span class="line">0x0000000000052051 &lt;+1&gt;:		lea    rsi,[rdi+0x128]</span><br><span class="line">0x0000000000052058 &lt;+8&gt;:		xor    edx,edx</span><br><span class="line">0x000000000005205a &lt;+10&gt;:	mov    edi,0x2</span><br><span class="line">0x000000000005205f &lt;+15&gt;:	mov    r10d,0x8</span><br><span class="line">0x0000000000052065 &lt;+21&gt;:	mov    eax,0xe</span><br><span class="line">0x000000000005206a &lt;+26&gt;:	syscall </span><br><span class="line">0x000000000005206c &lt;+28&gt;:	pop    rdi</span><br><span class="line">0x000000000005206d &lt;+29&gt;:	cmp    rax,0xfffffffffffff001</span><br><span class="line">0x0000000000052073 &lt;+35&gt;:	jae    0x520d0 &lt;setcontext+128&gt;</span><br><span class="line">0x0000000000052075 &lt;+37&gt;:	mov    rcx,QWORD PTR [rdi+0xe0]</span><br><span class="line">0x000000000005207c &lt;+44&gt;:	fldenv [rcx]</span><br><span class="line">0x000000000005207e &lt;+46&gt;:	ldmxcsr DWORD PTR [rdi+0x1c0]   # 会造成程序执行时直接 crash</span><br><span class="line">0x0000000000052085 &lt;+53&gt;:	mov    rsp,QWORD PTR [rdi+0xa0] # 利用从这里开始</span><br><span class="line">0x000000000005208c &lt;+60&gt;:	mov    rbx,QWORD PTR [rdi+0x80]</span><br><span class="line">0x0000000000052093 &lt;+67&gt;:	mov    rbp,QWORD PTR [rdi+0x78]</span><br><span class="line">0x0000000000052097 &lt;+71&gt;:	mov    r12,QWORD PTR [rdi+0x48]</span><br><span class="line">0x000000000005209b &lt;+75&gt;:	mov    r13,QWORD PTR [rdi+0x50]</span><br><span class="line">0x000000000005209f &lt;+79&gt;:	mov    r14,QWORD PTR [rdi+0x58]</span><br><span class="line">0x00000000000520a3 &lt;+83&gt;:	mov    r15,QWORD PTR [rdi+0x60]</span><br><span class="line">0x00000000000520a7 &lt;+87&gt;:	mov    rcx,QWORD PTR [rdi+0xa8]	</span><br><span class="line">0x00000000000520ae &lt;+94&gt;:	push   rcx 					   # 这里入栈后ret会ret到该地址</span><br><span class="line">0x00000000000520af &lt;+95&gt;:	mov    rsi,QWORD PTR [rdi+0x70]</span><br><span class="line">0x00000000000520b3 &lt;+99&gt;:	mov    rdx,QWORD PTR [rdi+0x88]</span><br><span class="line">0x00000000000520ba &lt;+106&gt;:	mov    rcx,QWORD PTR [rdi+0x98]</span><br><span class="line">0x00000000000520c1 &lt;+113&gt;:	mov    r8,QWORD PTR [rdi+0x28]</span><br><span class="line">0x00000000000520c5 &lt;+117&gt;:	mov    r9,QWORD PTR [rdi+0x30]</span><br><span class="line">0x00000000000520c9 &lt;+121&gt;:	mov    rdi,QWORD PTR [rdi+0x68]</span><br><span class="line">0x00000000000520cd &lt;+125&gt;:	xor    eax,eax</span><br><span class="line">0x00000000000520cf &lt;+127&gt;:	ret    						   # ret 劫持程序流</span><br><span class="line">0x00000000000520d0 &lt;+128&gt;:	mov    rcx,QWORD PTR [rip+0x398d91]        # 0x3eae68</span><br><span class="line">0x00000000000520d7 &lt;+135&gt;:	neg    eax</span><br><span class="line">0x00000000000520d9 &lt;+137&gt;:	mov    DWORD PTR fs:[rcx],eax</span><br><span class="line">0x00000000000520dc &lt;+140&gt;:	or     rax,0xffffffffffffffff</span><br><span class="line">0x00000000000520e0 &lt;+144&gt;:	ret </span><br></pre></td></tr></table></figure>
+
+<p>从<code>&lt;setcontext+53&gt;~&lt;setcontext+127&gt;</code>都是我们的利用范围，可以看到这部分代码以 <strong>rdi 寄存器里的地址为基准</strong>设置各个寄存器的值，其中**<code>push rcx</code>和后面的<code>ret</code>会使得<code>rip=rcx</code><strong>，而且<code>setcontext</code>最后会</strong><code>xor eax, eax</code>对<code>eax</code>进行赋0**。</p>
+<p>大部分题目中通过控制 rsp 和 rip 就可以很好地解决堆题不方便直接控制程序的执行流的问题，可以将<code>setcontext + 53</code>写进<code>__free_hook</code>或<code>__malloc_hook</code>中，然后建立或释放一个<code>chunk</code>，此时的<code>rdi</code>就会是该<code>chunk</code>的（<code>user_data?</code>）开头，如果我们提前布局好堆，就意味着我们可以控制寄存器并劫持程序流。</p>
+<p>如果需要打<code>IO</code>流的话，我们可以将<code>setcontext + 53</code>写入<code>vtable</code>中，后面执行该<code>IO</code>函数时，<code>rdi</code>就会是<code>fp</code>，指向<code>IO_FILE</code>，如果我们伪造好了<code>IO_FILE</code>，同样可以劫持程序流。</p>
+<h2 id="glibc-2-29及以后"><a href="#glibc-2-29及以后" class="headerlink" title="glibc-2.29及以后"></a>glibc-2.29及以后</h2><p>这里以2.31-0ubuntu9.9_amd64为例：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br></pre></td><td class="code"><pre><span class="line">0x0000000000054f20 &lt;+0&gt;:		endbr64 </span><br><span class="line">0x0000000000054f24 &lt;+4&gt;:		push   rdi</span><br><span class="line">0x0000000000054f25 &lt;+5&gt;:		lea    rsi,[rdi+0x128]</span><br><span class="line">0x0000000000054f2c &lt;+12&gt;:	xor    edx,edx</span><br><span class="line">0x0000000000054f2e &lt;+14&gt;:	mov    edi,0x2</span><br><span class="line">0x0000000000054f33 &lt;+19&gt;:	mov    r10d,0x8</span><br><span class="line">0x0000000000054f39 &lt;+25&gt;:	mov    eax,0xe</span><br><span class="line">0x0000000000054f3e &lt;+30&gt;:	syscall </span><br><span class="line">0x0000000000054f40 &lt;+32&gt;:	pop    rdx</span><br><span class="line">0x0000000000054f41 &lt;+33&gt;:	cmp    rax,0xfffffffffffff001</span><br><span class="line">0x0000000000054f47 &lt;+39&gt;:	jae    0x5506f &lt;setcontext+335&gt;</span><br><span class="line">0x0000000000054f4d &lt;+45&gt;:	mov    rcx,QWORD PTR [rdx+0xe0]</span><br><span class="line">0x0000000000054f54 &lt;+52&gt;:	fldenv [rcx]</span><br><span class="line">0x0000000000054f56 &lt;+54&gt;:	ldmxcsr DWORD PTR [rdx+0x1c0]</span><br><span class="line">0x0000000000054f5d &lt;+61&gt;:	mov    rsp,QWORD PTR [rdx+0xa0] # 利用从这里开始</span><br><span class="line">0x0000000000054f64 &lt;+68&gt;:	mov    rbx,QWORD PTR [rdx+0x80]</span><br><span class="line">0x0000000000054f6b &lt;+75&gt;:	mov    rbp,QWORD PTR [rdx+0x78]</span><br><span class="line">0x0000000000054f6f &lt;+79&gt;:	mov    r12,QWORD PTR [rdx+0x48]</span><br><span class="line">0x0000000000054f73 &lt;+83&gt;:	mov    r13,QWORD PTR [rdx+0x50]</span><br><span class="line">0x0000000000054f77 &lt;+87&gt;:	mov    r14,QWORD PTR [rdx+0x58]</span><br><span class="line">0x0000000000054f7b &lt;+91&gt;:	mov    r15,QWORD PTR [rdx+0x60]</span><br><span class="line">0x0000000000054f7f &lt;+95&gt;:	test   DWORD PTR fs:0x48,0x2</span><br><span class="line">0x0000000000054f8b &lt;+107&gt;:	je     0x55046 &lt;setcontext+294&gt; # 这里会跳转走</span><br><span class="line">0x0000000000054f91 &lt;+113&gt;:	mov    rsi,QWORD PTR [rdx+0x3a8]</span><br><span class="line">0x0000000000054f98 &lt;+120&gt;:	mov    rdi,rsi</span><br><span class="line">0x0000000000054f9b &lt;+123&gt;:	mov    rcx,QWORD PTR [rdx+0x3b0]</span><br><span class="line">0x0000000000054fa2 &lt;+130&gt;:	cmp    rcx,QWORD PTR fs:0x78</span><br><span class="line">0x0000000000054fab &lt;+139&gt;:	je     0x54fe5 &lt;setcontext+197&gt;</span><br><span class="line">0x0000000000054fad &lt;+141&gt;:	mov    rax,QWORD PTR [rsi-0x8]</span><br><span class="line">0x0000000000054fb1 &lt;+145&gt;:	and    rax,0xfffffffffffffff8</span><br><span class="line">0x0000000000054fb5 &lt;+149&gt;:	cmp    rax,rsi</span><br><span class="line">0x0000000000054fb8 &lt;+152&gt;:	je     0x54fc0 &lt;setcontext+160&gt;</span><br><span class="line">0x0000000000054fba &lt;+154&gt;:	sub    rsi,0x8</span><br><span class="line">0x0000000000054fbe &lt;+158&gt;:	jmp    0x54fad &lt;setcontext+141&gt;</span><br><span class="line">0x0000000000054fc0 &lt;+160&gt;:	mov    rax,0x1</span><br><span class="line">0x0000000000054fc7 &lt;+167&gt;:	incsspq rax</span><br><span class="line">0x0000000000054fcc &lt;+172&gt;:	rstorssp QWORD PTR [rsi-0x8]</span><br><span class="line">0x0000000000054fd1 &lt;+177&gt;:	saveprevssp </span><br><span class="line">0x0000000000054fd5 &lt;+181&gt;:	mov    rax,QWORD PTR [rdx+0x3b0]</span><br><span class="line">0x0000000000054fdc &lt;+188&gt;:	mov    QWORD PTR fs:0x78,rax</span><br><span class="line">0x0000000000054fe5 &lt;+197&gt;:	rdsspq rcx</span><br><span class="line">0x0000000000054fea &lt;+202&gt;:	sub    rcx,rdi</span><br><span class="line">0x0000000000054fed &lt;+205&gt;:	je     0x5500c &lt;setcontext+236&gt;</span><br><span class="line">0x0000000000054fef &lt;+207&gt;:	neg    rcx</span><br><span class="line">0x0000000000054ff2 &lt;+210&gt;:	shr    rcx,0x3</span><br><span class="line">0x0000000000054ff6 &lt;+214&gt;:	mov    esi,0xff</span><br><span class="line">0x0000000000054ffb &lt;+219&gt;:	cmp    rcx,rsi</span><br><span class="line">0x0000000000054ffe &lt;+222&gt;:	cmovb  rsi,rcx</span><br><span class="line">0x0000000000055002 &lt;+226&gt;:	incsspq rsi</span><br><span class="line">0x0000000000055007 &lt;+231&gt;:	sub    rcx,rsi</span><br><span class="line">0x000000000005500a &lt;+234&gt;:	ja     0x54ffb &lt;setcontext+219&gt;</span><br><span class="line">0x000000000005500c &lt;+236&gt;:	mov    rsi,QWORD PTR [rdx+0x70]</span><br><span class="line">0x0000000000055010 &lt;+240&gt;:	mov    rdi,QWORD PTR [rdx+0x68]</span><br><span class="line">0x0000000000055014 &lt;+244&gt;:	mov    rcx,QWORD PTR [rdx+0x98]</span><br><span class="line">0x000000000005501b &lt;+251&gt;:	mov    r8,QWORD PTR [rdx+0x28]</span><br><span class="line">0x000000000005501f &lt;+255&gt;:	mov    r9,QWORD PTR [rdx+0x30]</span><br><span class="line">0x0000000000055023 &lt;+259&gt;:	mov    r10,QWORD PTR [rdx+0xa8]</span><br><span class="line">0x000000000005502a &lt;+266&gt;:	mov    rdx,QWORD PTR [rdx+0x88]</span><br><span class="line">0x0000000000055031 &lt;+273&gt;:	rdsspq rax</span><br><span class="line">0x0000000000055036 &lt;+278&gt;:	cmp    r10,QWORD PTR [rax]</span><br><span class="line">0x0000000000055039 &lt;+281&gt;:	mov    eax,0x0</span><br><span class="line">0x000000000005503e &lt;+286&gt;:	jne    0x55043 &lt;setcontext+291&gt;</span><br><span class="line">0x0000000000055040 &lt;+288&gt;:	push   r10</span><br><span class="line">0x0000000000055042 &lt;+290&gt;:	ret    </span><br><span class="line">0x0000000000055043 &lt;+291&gt;:	jmp    r10</span><br><span class="line">0x0000000000055046 &lt;+294&gt;:	mov    rcx,QWORD PTR [rdx+0xa8] # 跳转到这里继续</span><br><span class="line">0x000000000005504d &lt;+301&gt;:	push   rcx					  # 通过push rcx控制rip</span><br><span class="line">0x000000000005504e &lt;+302&gt;:	mov    rsi,QWORD PTR [rdx+0x70]</span><br><span class="line">0x0000000000055052 &lt;+306&gt;:	mov    rdi,QWORD PTR [rdx+0x68]</span><br><span class="line">0x0000000000055056 &lt;+310&gt;:	mov    rcx,QWORD PTR [rdx+0x98]</span><br><span class="line">0x000000000005505d &lt;+317&gt;:	mov    r8,QWORD PTR [rdx+0x28]</span><br><span class="line">0x0000000000055061 &lt;+321&gt;:	mov    r9,QWORD PTR [rdx+0x30]</span><br><span class="line">0x0000000000055065 &lt;+325&gt;:	mov    rdx,QWORD PTR [rdx+0x88]</span><br><span class="line">0x000000000005506c &lt;+332&gt;:	xor    eax,eax</span><br><span class="line">0x000000000005506e &lt;+334&gt;:	ret    						  # 劫持程序流</span><br><span class="line">0x000000000005506f &lt;+335&gt;:	mov    rcx,QWORD PTR [rip+0x196dfa]        # 0x1ebe70</span><br><span class="line">0x0000000000055076 &lt;+342&gt;:	neg    eax</span><br><span class="line">0x0000000000055078 &lt;+344&gt;:	mov    DWORD PTR fs:[rcx],eax</span><br><span class="line">0x000000000005507b &lt;+347&gt;:	or     rax,0xffffffffffffffff</span><br><span class="line">0x000000000005507f &lt;+351&gt;:	ret </span><br></pre></td></tr></table></figure>
+
+<p>由于2.29以后是以 <strong>rdx 寄存器里的地址为基准</strong>设置各个寄存器的值，而修改<code>__free_hook</code>或者<code>__malloc_hook</code>时往往只有一个参数，不能稳定地控制<code>rdx</code>，因此我们需要找一个<code>gadget</code>帮助我们将<code>rdi</code>的值赋给<code>rdx</code>。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mov rdx, qword ptr [rdi + 8] ; mov qword ptr [rsp], rax ; call qword ptr [rdx + 0x20]</span><br></pre></td></tr></table></figure>
+
+<p>这个<code>gadget</code>在2.29和2.31中都有，它会将<code>rdi + 0x8</code>指向的内容赋值给<code>rdx</code>，最后会<code>call [rdx + 0x20]</code>。我们可以将这个<code>gadget</code>的地址写到<code>hook</code>中，并在<code>chunk+0x8</code>处写入<code>rdx</code>的值，并在<code>rdx+0x20</code>处写入<code>setcontext</code>。</p>
+<p>如果走<code>IO_FILE</code>，利用方法也差不多。不过走<code>_IO_switch_to_wget_mode </code>的链可以设置<code>rdx</code>，具体看<code>House of Cat</code>。</p>
+<h2 id="SigreturnFrame"><a href="#SigreturnFrame" class="headerlink" title="SigreturnFrame"></a>SigreturnFrame</h2><p><code>SigreturnFrame</code>是<code>pwntools</code>中的一个控制寄存器的工具，常用在SROP中，这个工具实际上就是依靠<code>setcontext</code>实现的，我们可以用它来构造<code>setcontext</code>中的偏移，只需要在调用<code>setcontext</code>前将<code>rdi</code>或<code>rdx</code>指向<code>SigreturnFrame</code>，程序在执行<code>setcontext</code>时就会按照定义好的内容控制寄存器，用法如下：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">frame = SigreturnFrame()</span><br><span class="line">frame.rsp = xxx</span><br><span class="line">frame.rdi = xxx</span><br><span class="line">frame.rsi = xxx</span><br><span class="line">frame.rdx = xxx</span><br><span class="line">frame.rip = xxx</span><br></pre></td></tr></table></figure>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/setcontext/" rel="tag"># setcontext</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/10/%E9%93%81%E4%BA%BA%E4%B8%89%E9%A1%B9heap2019/" rel="prev" title="铁人三项heap2019">
+      <i class="fa fa-chevron-left"></i> 铁人三项heap2019
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/03/01/XHLJ-babycalc/" rel="next" title="XHLJ_babycalc">
+      XHLJ_babycalc <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#glibc-2-27%E5%8F%8A%E4%BB%A5%E5%89%8D"><span class="nav-number">1.</span> <span class="nav-text">glibc-2.27及以前</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#glibc-2-29%E5%8F%8A%E4%BB%A5%E5%90%8E"><span class="nav-number">2.</span> <span class="nav-text">glibc-2.29及以后</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#SigreturnFrame"><span class="nav-number">3.</span> <span class="nav-text">SigreturnFrame</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

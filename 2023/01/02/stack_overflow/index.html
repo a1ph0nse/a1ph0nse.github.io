@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="栈溢出是pwn的开始，是pwn中最基础的部分。不同系统的栈溢出利用会有所不同，但主要的思路都是一样的，下面主要记录的是linux下的栈溢出。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="栈溢出">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/stack_overflow/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="栈溢出是pwn的开始，是pwn中最基础的部分。不同系统的栈溢出利用会有所不同，但主要的思路都是一样的，下面主要记录的是linux下的栈溢出。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://a1ph0nse.github.io/2023/01/02/stack_overflow/stack_overflow/stack.png">
+<meta property="og:image" content="https://a1ph0nse.github.io/2023/01/02/stack_overflow/stack_overflow/stack2.png">
+<meta property="article:published_time" content="2023-01-01T16:00:10.000Z">
+<meta property="article:modified_time" content="2023-01-03T14:59:20.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="stackoverflow">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://a1ph0nse.github.io/2023/01/02/stack_overflow/stack_overflow/stack.png">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/stack_overflow/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>栈溢出 | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/stack_overflow/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          栈溢出
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-01-02 00:00:10" itemprop="dateCreated datePublished" datetime="2023-01-02T00:00:10+08:00">2023-01-02</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-01-03 22:59:20" itemprop="dateModified" datetime="2023-01-03T22:59:20+08:00">2023-01-03</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn/" itemprop="url" rel="index"><span itemprop="name">pwn</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>栈溢出是pwn的开始，是pwn中最基础的部分。不同系统的栈溢出利用会有所不同，但主要的思路都是一样的，下面主要记录的是linux下的栈溢出。</p>
+<span id="more"></span>
+
+<h2 id="函数调用栈"><a href="#函数调用栈" class="headerlink" title="函数调用栈"></a>函数调用栈</h2><p>函数调用的过程是通过<strong>栈</strong>实现的，这个栈就是函数调用栈。</p>
+<p>栈是一种先进后出（LIFO）的数据结构，有压栈(push)和出栈(pop)两种操作，函数调用栈中存放有函数调用信息和局部变量。<br>其中函数调用信息包括<strong>函数的返回地址</strong>、<strong>ebp(或rbp)的保存值</strong>、<strong>函数的参数</strong>。</p>
+<p>不同位数对函数调用栈的利用有所不同：</p>
+<ul>
+<li><p>intel_x86(32位)：函数的参数全部保存在栈中</p>
+</li>
+<li><p>intel_x64(64位)：函数的前六个整型或指针参数依次保存在寄存器rdi,rsi,rdx,rcx,r8,r9中，如果寄存器不够用才会保存在栈上</p>
+</li>
+</ul>
+<p>函数的参数会在函数调用前（执行call指令之前）<strong>逆序</strong>入栈</p>
+<p><img src="./stack_overflow/stack.png" alt="stack"></p>
+<p>函数调用栈从<strong>高地址向低地址生长</strong>，也就是说高地址处为栈底。</p>
+<p>在函数调用时，程序会执行call指令调用函数</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">call function_name  //调用函数</span><br><span class="line">等价于下面两条指令</span><br><span class="line">push ret_addr   //将函数返回地址（即函数执行完后执行的下一条指令的地址）push入栈</span><br><span class="line">jump function_name  //跳转到调用函数的具体代码</span><br></pre></td></tr></table></figure>
+
+<p>在跳转到调用函数的具体代码后，会首先执行以下指令：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">如果是64位则是rsp和rbp</span><br><span class="line">push ebp    //将当前的ebp保存在栈上</span><br><span class="line">mov esp , ebp   //将ebp的值赋值给esp,让他们指向同一处</span><br><span class="line">sub esp , xh    //让esp的值减去x，为该函数的局部变量预留栈空间（此处的h表示x为16进制数）</span><br></pre></td></tr></table></figure>
+
+<p>在函数结束时，程序会执行leave和ret指令退出函数</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">如果是64位则是rsp、rbp和rip</span><br><span class="line">leave</span><br><span class="line">相当于下面两条指令</span><br><span class="line">mov esp , ebp  //将ebp的值赋值给esp,让他们指向同一处</span><br><span class="line">pop ebp    //将之前保存的ebp pop出栈</span><br><span class="line"></span><br><span class="line">ret</span><br><span class="line">相当于pop eip   //将之前保存的返回地址ret_addr pop到eip,eip寄存器中存放的是下一条要执行的指令的地址</span><br></pre></td></tr></table></figure>
+
+<h2 id="栈溢出原理"><a href="#栈溢出原理" class="headerlink" title="栈溢出原理"></a>栈溢出原理</h2><p>在程序执行的过程中，<strong>栈中变量</strong>写入的字节数<strong>超出</strong>了这个变量申请的字节数，导致<strong>写入内容覆盖了栈中后续的变量</strong>。栈溢出漏洞轻则使程序崩溃，重则使程序的执行流被控制。</p>
+<p>栈溢出漏洞是比较好发现的，只需要寻找<strong>向栈上写入数据的函数</strong>，并检查其<strong>写入数据的字节数</strong>是否合法即可。</p>
+<p>如下列的程序片段：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">vuln</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">char</span> buf[<span class="number">0x10</span>];</span><br><span class="line">    read(<span class="number">0</span>,buf,<span class="number">0x80</span>);</span><br><span class="line">    <span class="comment">//gets(buf);</span></span><br><span class="line">    <span class="comment">//scanf(&quot;%s&quot;,buf);</span></span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">    vuln();</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>在上面的vuln()函数中，<strong>局部变量buf存储在栈上</strong>，其申请的内存只有0x10字节，但在read()函数中却向buf中写入0x20字节，<strong>超出了buf申请的范围</strong>，除此之外，gets()函数和scanf()函数向buf中写入，但却没有检查写入的字节数目，因此也有栈溢出漏洞。</p>
+<p>栈溢出漏洞通常利用超出范围的写入<strong>修改栈上的其他变量</strong>，可以通过<strong>修改栈上的变量改变程序的执行流程</strong>，也可以通过<strong>修改变量后保存在栈上的ebp和返回地址值改变程序的执行流程</strong>。</p>
+<p>上述程序片段的栈空间如下：<br><img src="./stack_overflow/stack2.png" alt="stack"></p>
+<p>通过栈溢出可以覆盖vuln()函数的ebp和返回地址。</p>
+<h2 id="ret2txt"><a href="#ret2txt" class="headerlink" title="ret2txt"></a>ret2txt</h2><p>ret2txt是对程序原有代码片段的利用，通过栈溢出<strong>将该函数的返回地址覆盖为程序原有的代码片段的地址</strong>（如后门函数的地址），从而get shell。</p>
+<h2 id="ret2shellcode"><a href="#ret2shellcode" class="headerlink" title="ret2shellcode"></a>ret2shellcode</h2><p>大部分程序都没有后门函数，因此ret2txt在许多场合下都是行不通的。因此需要我们自行写入一段能get shell的代码，这段代码就是shellcode。通过栈溢出<strong>将该函数的返回地址覆盖为shellcode</strong>即可get shell。</p>
+<p>pwntools中可以很方便的得到shellcode。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">context.arch=<span class="string">&#x27;...&#x27;</span>  <span class="comment">#设置系统的架构，如amd64，i386...</span></span><br><span class="line"></span><br><span class="line">shellcode = asm(shellcraft.sh())</span><br></pre></td></tr></table></figure>
+
+<p>然而ret2shellcode会受到<strong>NX保护</strong>的防护，在开启NX保护后，写入的shellcode所在的内存页不可执行，因此无法运行shellcode得到shell。</p>
+<h2 id="ret2syscall"><a href="#ret2syscall" class="headerlink" title="ret2syscall"></a>ret2syscall</h2><p>ret2syscall通过系统调用execve()执行execve(“/bin/sh”,NULL,NULL)进行get shell。</p>
+<p>执行系统调用execve(“/bin/sh”,NULL,NULL)仅需要将需要的参数传到<strong>寄存器</strong>，之后控制程序执行**int 0x80(32位)<strong>或</strong>syscall(64位)**。</p>
+<p>对于<strong>32位</strong>而言，需要将<strong>系统调用号</strong>传到<strong>eax</strong>寄存器，execve()的系统调用号为<strong>11</strong>；<strong>第一个参数”/bin/sh”的地址</strong>传到<strong>ebx</strong>寄存器；<strong>第二、第三个</strong>参数0传到<strong>ecx,edx</strong>寄存器。</p>
+<p>对于<strong>64位</strong>而言，需要将<strong>系统调用号</strong>传到<strong>rax</strong>寄存器，execve()的系统调用号为<strong>59</strong>；<strong>第一个参数”/bin/sh”的地址</strong>传到<strong>rdi</strong>寄存器；<strong>第二、第三个</strong>参数0传到<strong>rsi,rdx</strong>寄存器。</p>
+<p>如果有其他需要，也可以通过改变传入的系统调用号和参数执行其他的系统调用（如read、write、sigreturn）。</p>
+<p>要达到传参和调用syscall的目的，我们可以利用进一步<strong>利用程序中更小的代码片段</strong>（以后称为<strong>gadget</strong>）。</p>
+<p>通过ROPgadget可以找到程序中可以利用的gadget，</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">ROPgadget --binary 二进制文件名 --only 关键词(如pop、ret、eax、ebx...，关键词中可用|表示或) 可用于查找对应的gadget的地址</span><br><span class="line">ROPgadget --binary 二进制文件名 --string 字符串 可用于查找对应字符串的地址</span><br><span class="line"></span><br><span class="line">后面可以接grep命令通过表达式缩小查找范围，除此之外ROPgadget还有其他用处。</span><br></pre></td></tr></table></figure>
+
+<p>通常找到的gadget大概是这样的：（如果能找到的话）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">0x080480c9:pop rbx; ret</span><br><span class="line">0x0804808a:pop rbx; pop rdi; pop rsi; ret</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">0x08049421:int 0x80;</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">0x080be408:&quot;/bin/sh&quot;</span><br></pre></td></tr></table></figure>
+
+<p>通过在栈上布置pop指令，并在栈的后面布置要pop的参数，将该参数pop到对应寄存器中，由于通常选择<strong>后续紧跟ret</strong>的gadget，因此在执行了一个gadget后会ret，方便我们继续劫持栈。</p>
+<p>对于寄存器<strong>eax(rax)<strong>，还有其他的方式可以控制其值。一般来说，函数的</strong>返回值</strong>都会存放在寄存器eax(rax)中，据此可以通过函数返回值控制其值。如<strong>read()函数会返回其读入数据的长度</strong>，因此可以通过read()函数读入数据的长度来控制eax(rax)的值。</p>
+<h2 id="Canary"><a href="#Canary" class="headerlink" title="Canary"></a>Canary</h2><p>Canary是针对栈溢出攻击的防护，其防护方式是在push入ebp(或rbp)后push入一个canary，在函数返回时根据canary的值与原来是否一致来判断是否发生栈溢出。但是Canary防护并非无懈可击，只要可以<strong>泄露出canary</strong>，并在栈溢出时在canary的位置用canary的值去覆盖，则不会被检测出发生栈溢出。<strong>值得注意的是，一般情况下，程序每次运行的canary都不相同。</strong></p>
+<p>一、覆盖’\x00’</p>
+<p>通常<strong>字符串均以’\x00’作为结束符</strong>，因此一旦’\x00’被覆盖，程序将无法知道字符串正确的结束位置，若此时使用函数进行输出，则会继续输出字符串后面的内容，直到出现’\x00’。因此如果有一个栈上的字符串和输出函数，通过栈溢出漏洞保证**在canary之前不会出现’\x00’**，则输出函数会将后续的canary泄露出来。</p>
+<p>二、泄露fs:28h</p>
+<p>由于在函数结束之后需要对canary的值进行验证，因此程序中一定有一个地方存放着canary的值用于验证。通常在汇编代码中可以找到用来验证的值，这个值是fs:28h，如果任意读则可以从中泄露出canary，在栈溢出时填入canary。</p>
+<p>fs:28h与libc基地址的偏移是固定的，通过爆破或其他方法可以得到fs:28h的位置。</p>
+<p>三、覆写canary</p>
+<p>这个方法也是对canary的验证值fs:28h进行攻击，但是是通过将canary的验证值修改为一个我们知道的值，然后在栈溢出时将canary覆盖为这个值。这个攻击的前提是可以写到fs:28h的位置。</p>
+<p>四、逐字节爆破</p>
+<p>在部分情况下，程序重启之后的canary值保持不变（常常是在BROP的题目中），这时候就可以采用逐字节爆破的方法去得到canary。</p>
+<p>从低字节开始逐个字节进行爆破，当一个字节爆破成功时，程序不会异常关闭，此时就可以知道这一个字节的值，可以继续爆破下一个字节；反之，程序会异常关闭，这样就知道这次尝试是错的。</p>
+<p>五、stack smashing</p>
+<p>有时候我们可能无法绕过canary保护，但利用canary保护，我们也可以泄露一些信息。</p>
+<p>stack smashing是一种利用canary保护泄露信息的攻击。在程序检测到canary被修改时，程序不会继续返回，而是调用函数__stack_chk_fail打印错误信息。如：*** stack smashing detected ***: ./pwn terminated</p>
+<p>可以看到__stack_chk_fail打印的错误信息中就包含程序的名字（pwn）。其实__stack_chk_fail会打印<strong>argv[0]这个指针所指向的字符串</strong>，一般来说这个字符串是程序的名字。而<strong>argv[0]一般存放在栈上</strong>，通过<strong>栈溢出覆盖argv[0]<strong>即可泄露出其他信息（即使程序知道canary被修改了，栈溢出覆盖的数据</strong>依旧会被覆盖</strong>）。</p>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/stackoverflow/" rel="tag"># stackoverflow</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/protect/" rel="prev" title="linux pwn中的保护">
+      <i class="fa fa-chevron-left"></i> linux pwn中的保护
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/02/ROP/" rel="next" title="ROP">
+      ROP <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E6%A0%88"><span class="nav-number">1.</span> <span class="nav-text">函数调用栈</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%88%E6%BA%A2%E5%87%BA%E5%8E%9F%E7%90%86"><span class="nav-number">2.</span> <span class="nav-text">栈溢出原理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ret2txt"><span class="nav-number">3.</span> <span class="nav-text">ret2txt</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ret2shellcode"><span class="nav-number">4.</span> <span class="nav-text">ret2shellcode</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ret2syscall"><span class="nav-number">5.</span> <span class="nav-text">ret2syscall</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Canary"><span class="nav-number">6.</span> <span class="nav-text">Canary</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

