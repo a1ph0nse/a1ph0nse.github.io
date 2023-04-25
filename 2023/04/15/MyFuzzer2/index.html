@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="应该尝试动手设计Fuzzer了，这段时间看过的资料也不少了，只看不做是不行的。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MyFuzzer2">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/04/15/MyFuzzer2/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="应该尝试动手设计Fuzzer了，这段时间看过的资料也不少了，只看不做是不行的。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://a1ph0nse.github.io/2023/04/15/MyFuzzer2/MyFuzzer2/image-20230416090459589.png">
+<meta property="article:published_time" content="2023-04-15T15:13:31.000Z">
+<meta property="article:modified_time" content="2023-04-16T09:33:30.065Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="fuzzing">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://a1ph0nse.github.io/2023/04/15/MyFuzzer2/MyFuzzer2/image-20230416090459589.png">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/04/15/MyFuzzer2/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>MyFuzzer2 | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/04/15/MyFuzzer2/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MyFuzzer2
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-04-15 23:13:31" itemprop="dateCreated datePublished" datetime="2023-04-15T23:13:31+08:00">2023-04-15</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-04-16 17:33:30" itemprop="dateModified" datetime="2023-04-16T17:33:30+08:00">2023-04-16</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/fuzzing/" itemprop="url" rel="index"><span itemprop="name">fuzzing</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>应该尝试动手设计Fuzzer了，这段时间看过的资料也不少了，只看不做是不行的。</p>
+<span id="more"></span>
+
+<h2 id="MyFuzzer的架构"><a href="#MyFuzzer的架构" class="headerlink" title="MyFuzzer的架构"></a>MyFuzzer的架构</h2><p>初步构想中的MyFuzzer有<code>database</code>、变异引擎、<code>Pin_server</code>这几个部分：</p>
+<ul>
+<li><code>database</code>用于保存种子文件，提供给变异引擎，变异引擎也会更新其中的种子文件</li>
+<li>变异引擎主要利用种子文件变异产生新的文件，送给<code>Pin_server</code>；也会从<code>Pin_server</code>处获取代码覆盖率来更新种子，UI之类的工作估计也要在这一块完成（最好可以划分出其他模块负责）</li>
+<li><code>Pin_server</code>类似一个<code>debuger</code>，通过<code>ptrace</code>与<code>fork</code>的Pin运行的目标程序进行交互（如果要引入快照机制可能就是在这里）</li>
+<li><code>Pin</code>运行的目标程序外面套了<code>debugee</code>，在进行一些操作（如关闭<code>ASLR</code>）后<code>debugee</code>通过<code>exec</code>函数通过Pin运行的程序</li>
+</ul>
+<p> <img src="MyFuzzer2/image-20230416090459589.png" alt="MyFuzzer架构"></p>
+<h2 id="插桩部分实现"><a href="#插桩部分实现" class="headerlink" title="插桩部分实现"></a>插桩部分实现</h2><h3 id="PIN-API"><a href="#PIN-API" class="headerlink" title="PIN API"></a>PIN API</h3><h3 id="单纯的BBL插桩"><a href="#单纯的BBL插桩" class="headerlink" title="单纯的BBL插桩"></a>单纯的BBL插桩</h3><p>简单修改了下MyPintool实现的BBL插桩，可以统计线程数、BBL数、总的指令数，并输入每个BBL的地址到<code>bbl_log.txt</code>中。</p>
+<figure class="highlight cpp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;pin.H&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iostream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;fstream&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;iomanip&gt;</span></span></span><br><span class="line"><span class="keyword">using</span> std::cerr;</span><br><span class="line"><span class="keyword">using</span> std::endl;</span><br><span class="line"><span class="keyword">using</span> std::string;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> UINT64 ins_count    = <span class="number">0</span>; <span class="comment">//number of dynamically executed instructions</span></span><br><span class="line"><span class="type">static</span> UINT64 bbl_count    = <span class="number">0</span>; <span class="comment">//number of dynamically executed basic blocks</span></span><br><span class="line"><span class="type">static</span> UINT64 thread_count = <span class="number">0</span>; <span class="comment">//total number of threads, including main thread</span></span><br><span class="line"></span><br><span class="line">std::ostream* out = &amp;cerr;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">void</span> <span class="title">work</span><span class="params">(UINT64 bbl_addr,UINT64 ins_in_bbl)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	*out &lt;&lt; <span class="string">&quot;Detected a bbl, the address of it is: &quot;</span> &lt;&lt; std::__1::hex &lt;&lt; bbl_addr &lt;&lt;endl;</span><br><span class="line">	bbl_count++;</span><br><span class="line">	ins_count+=ins_in_bbl;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">VOID <span class="title">Trace</span><span class="params">(TRACE trace, VOID* v)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    <span class="comment">// Visit every basic block in the trace</span></span><br><span class="line">    <span class="keyword">for</span> (BBL bbl = <span class="built_in">TRACE_BblHead</span>(trace); <span class="built_in">BBL_Valid</span>(bbl); bbl = <span class="built_in">BBL_Next</span>(bbl))</span><br><span class="line">    &#123;</span><br><span class="line">        <span class="comment">// Insert a call to CountBbl() before every basic bloc, passing the number of instructions</span></span><br><span class="line">        <span class="built_in">BBL_InsertCall</span>(bbl, IPOINT_BEFORE, (AFUNPTR)work, IARG_UINT64, <span class="built_in">BBL_Address</span>(bbl), IARG_UINT64, <span class="built_in">BBL_NumIns</span>(bbl), IARG_END);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">VOID <span class="title">ThreadStart</span><span class="params">(THREADID threadIndex, CONTEXT* ctxt, INT32 flags, VOID* v)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	*out &lt;&lt; <span class="string">&quot;Detected a thread&quot;</span> &lt;&lt;endl;</span><br><span class="line">	thread_count++; </span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">VOID <span class="title">Fini</span><span class="params">(INT32 code, VOID* v)</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">    *out &lt;&lt; <span class="string">&quot;===============================================&quot;</span> &lt;&lt; endl;</span><br><span class="line">    *out &lt;&lt; <span class="string">&quot;MyPinTool analysis results: &quot;</span> &lt;&lt; endl;</span><br><span class="line">    *out &lt;&lt;std::__1::dec&lt;&lt; <span class="string">&quot;Number of instructions: &quot;</span> &lt;&lt; ins_count &lt;&lt; endl;</span><br><span class="line">    *out &lt;&lt; <span class="string">&quot;Number of basic blocks: &quot;</span> &lt;&lt; bbl_count &lt;&lt; endl;</span><br><span class="line">    *out &lt;&lt; <span class="string">&quot;Number of threads: &quot;</span> &lt;&lt; thread_count &lt;&lt; endl;</span><br><span class="line">    *out &lt;&lt; <span class="string">&quot;===============================================&quot;</span> &lt;&lt; endl;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="type">int</span> <span class="title">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">char</span>* argv[])</span></span></span><br><span class="line"><span class="function"></span>&#123;</span><br><span class="line">	<span class="built_in">PIN_Init</span>(argc, argv);</span><br><span class="line"></span><br><span class="line">    string fileName = <span class="string">&quot;bbl_log.txt&quot;</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> (!fileName.<span class="built_in">empty</span>())</span><br><span class="line">    &#123;</span><br><span class="line">        out = <span class="keyword">new</span> std::<span class="built_in">ofstream</span>(fileName.<span class="built_in">c_str</span>());</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Register function to be called to instrument traces</span></span><br><span class="line">    <span class="built_in">TRACE_AddInstrumentFunction</span>(Trace, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Register function to be called for every thread before it starts running</span></span><br><span class="line">    <span class="built_in">PIN_AddThreadStartFunction</span>(ThreadStart, <span class="number">0</span>);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// Register function to be called when the application exits</span></span><br><span class="line">    <span class="built_in">PIN_AddFiniFunction</span>(Fini, <span class="number">0</span>);</span><br><span class="line">    </span><br><span class="line">	<span class="built_in">PIN_StartProgram</span>();</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>通过<code>debugee</code>可以关闭<code>ASLR</code>方便记录BBL：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/personality.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">main</span><span class="params">(<span class="type">int</span> argc, <span class="type">char</span>** argv)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> personality_result = personality(ADDR_NO_RANDOMIZE);</span><br><span class="line">	<span class="type">int</span> errno=<span class="number">-1</span>;</span><br><span class="line">	<span class="keyword">if</span> (personality_result == <span class="number">-1</span>)</span><br><span class="line">	&#123;</span><br><span class="line">	    <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;\033[1;35mdragonfly&gt;\033[0m error (%d) during &quot;</span>, errno);</span><br><span class="line">	    perror(<span class="string">&quot;personality&quot;</span>);</span><br><span class="line">	    <span class="built_in">exit</span>(errno);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="type">int</span> execl_result = execl(<span class="string">&quot;/home/a1ph0nse/tools/pin-3.27-gcc-linux/pin&quot;</span>, <span class="string">&quot;pin&quot;</span>, <span class="string">&quot;-t&quot;</span>, <span class="string">&quot;./obj-intel64/bbllog.so&quot;</span>, <span class="string">&quot;--&quot;</span>, <span class="string">&quot;/bin/ls&quot;</span>, <span class="literal">NULL</span>);</span><br><span class="line">	<span class="keyword">if</span> (execl_result == <span class="number">-1</span>) &#123;</span><br><span class="line">	    <span class="built_in">fprintf</span>(<span class="built_in">stderr</span>, <span class="string">&quot;\033[1;35mdragonfly&gt;\033[0m error (%d) during &quot;</span>, errno);</span><br><span class="line">	    perror(<span class="string">&quot;execl&quot;</span>);</span><br><span class="line">	    <span class="built_in">exit</span>(errno);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>现在有个很重要的问题，当执行了<code>execl</code>函数之后，父进程就没办法<code>trace</code>子进程了。</p>
+<h3 id="引入快照"><a href="#引入快照" class="headerlink" title="引入快照"></a>引入快照</h3>
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/fuzzing/" rel="tag"># fuzzing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/04/09/MyFuzzer1/" rel="prev" title="MyFuzzer1">
+      <i class="fa fa-chevron-left"></i> MyFuzzer1
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/04/23/t3%E7%9C%9F%E9%A2%98%E8%A7%A3%E6%9E%901/" rel="next" title="铁三线下赛真题解析1">
+      铁三线下赛真题解析1 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#MyFuzzer%E7%9A%84%E6%9E%B6%E6%9E%84"><span class="nav-number">1.</span> <span class="nav-text">MyFuzzer的架构</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%8F%92%E6%A1%A9%E9%83%A8%E5%88%86%E5%AE%9E%E7%8E%B0"><span class="nav-number">2.</span> <span class="nav-text">插桩部分实现</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#PIN-API"><span class="nav-number">2.1.</span> <span class="nav-text">PIN API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8D%95%E7%BA%AF%E7%9A%84BBL%E6%8F%92%E6%A1%A9"><span class="nav-number">2.2.</span> <span class="nav-text">单纯的BBL插桩</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%95%E5%85%A5%E5%BF%AB%E7%85%A7"><span class="nav-number">2.3.</span> <span class="nav-text">引入快照</span></a></li></ol></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">76</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>

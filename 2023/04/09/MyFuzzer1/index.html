@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=2">
+<meta name="theme-color" content="#222">
+<meta name="generator" content="Hexo 5.4.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+<link rel="stylesheet" href="/lib/font-awesome/css/all.min.css">
+
+<script id="hexo-configurations">
+    var NexT = window.NexT || {};
+    var CONFIG = {"hostname":"a1ph0nse.github.io","root":"/","scheme":"Gemini","version":"7.8.0","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12,"onmobile":false},"copycode":{"enable":false,"show_result":false,"style":null},"back2top":{"enable":true,"sidebar":false,"scrollpercent":true},"bookmark":{"enable":false,"color":"#222","save":"auto"},"fancybox":false,"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"algolia":{"hits":{"per_page":10},"labels":{"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}},"localsearch":{"enable":false,"trigger":"auto","top_n_per_article":1,"unescape":false,"preload":false},"motion":{"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}}};
+  </script>
+
+  <meta name="description" content="这次课程设计学习一下Fuzzing的相关知识并尝试编写一个简单的Fuzzer，之后在此基础之上进行改进。 首先学习一下像野人一样Fuzzing系列和写一个简单的fuzzer系列的翻译。像野人一样Fuzzing系列的文章写得很好，就是英文的有点难读；写一个简单的fuzzer的翻译质量比较一般，但也有其参考价值。 之后考虑学习一下AFL++和一些论文，尝试对这个Fuzzer进行优化。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="MyFuzzer1">
+<meta property="og:url" content="https://a1ph0nse.github.io/2023/04/09/MyFuzzer1/index.html">
+<meta property="og:site_name" content="a1ph0nse">
+<meta property="og:description" content="这次课程设计学习一下Fuzzing的相关知识并尝试编写一个简单的Fuzzer，之后在此基础之上进行改进。 首先学习一下像野人一样Fuzzing系列和写一个简单的fuzzer系列的翻译。像野人一样Fuzzing系列的文章写得很好，就是英文的有点难读；写一个简单的fuzzer的翻译质量比较一般，但也有其参考价值。 之后考虑学习一下AFL++和一些论文，尝试对这个Fuzzer进行优化。">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://a1ph0nse.github.io/2023/04/09/MyFuzzer1/MyFuzzer1/20160318104746473.png">
+<meta property="article:published_time" content="2023-04-09T12:26:49.000Z">
+<meta property="article:modified_time" content="2023-04-16T08:02:35.555Z">
+<meta property="article:author" content="a1ph0nse">
+<meta property="article:tag" content="fuzzing">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://a1ph0nse.github.io/2023/04/09/MyFuzzer1/MyFuzzer1/20160318104746473.png">
+
+<link rel="canonical" href="https://a1ph0nse.github.io/2023/04/09/MyFuzzer1/">
+
+
+<script id="page-configurations">
+  // https://hexo.io/docs/variables.html
+  CONFIG.page = {
+    sidebar: "",
+    isHome : false,
+    isPost : true,
+    lang   : 'zh-CN'
+  };
+</script>
+
+  <title>MyFuzzer1 | a1ph0nse</title>
+  
+
+
+
+
+
+
+  <noscript>
+  <style>
+  .use-motion .brand,
+  .use-motion .menu-item,
+  .sidebar-inner,
+  .use-motion .post-block,
+  .use-motion .pagination,
+  .use-motion .comments,
+  .use-motion .post-header,
+  .use-motion .post-body,
+  .use-motion .collection-header { opacity: initial; }
+
+  .use-motion .site-title,
+  .use-motion .site-subtitle {
+    opacity: initial;
+    top: initial;
+  }
+
+  .use-motion .logo-line-before i { left: initial; }
+  .use-motion .logo-line-after i { right: initial; }
+  </style>
+</noscript>
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage">
+  <div class="container use-motion">
+    <div class="headband"></div>
+
+    <header class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏">
+      <span class="toggle-line toggle-line-first"></span>
+      <span class="toggle-line toggle-line-middle"></span>
+      <span class="toggle-line toggle-line-last"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <span class="logo-line-before"><i></i></span>
+      <h1 class="site-title">a1ph0nse</h1>
+      <span class="logo-line-after"><i></i></span>
+    </a>
+      <p class="site-subtitle" itemprop="description">一个菜狗的挣扎</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger">
+    </div>
+  </div>
+</div>
+
+
+
+
+<nav class="site-nav">
+  <ul id="menu" class="main-menu menu">
+        <li class="menu-item menu-item-home">
+
+    <a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a>
+
+  </li>
+        <li class="menu-item menu-item-tags">
+
+    <a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a>
+
+  </li>
+        <li class="menu-item menu-item-categories">
+
+    <a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>分类</a>
+
+  </li>
+        <li class="menu-item menu-item-archives">
+
+    <a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a>
+
+  </li>
+  </ul>
+</nav>
+
+
+
+
+</div>
+    </header>
+
+    
+  <div class="back-to-top">
+    <i class="fa fa-arrow-up"></i>
+    <span>0%</span>
+  </div>
+  <div class="reading-progress-bar"></div>
+
+
+    <main class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          
+
+          <div class="content post posts-expand">
+            
+
+    
+  
+  
+  <article itemscope itemtype="http://schema.org/Article" class="post-block" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://a1ph0nse.github.io/2023/04/09/MyFuzzer1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.jpg">
+      <meta itemprop="name" content="a1ph0nse">
+      <meta itemprop="description" content="pwn菜狗、cs菜鸡">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="a1ph0nse">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          MyFuzzer1
+        </h1>
+
+        <div class="post-meta">
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-calendar"></i>
+              </span>
+              <span class="post-meta-item-text">发表于</span>
+
+              <time title="创建时间：2023-04-09 20:26:49" itemprop="dateCreated datePublished" datetime="2023-04-09T20:26:49+08:00">2023-04-09</time>
+            </span>
+              <span class="post-meta-item">
+                <span class="post-meta-item-icon">
+                  <i class="far fa-calendar-check"></i>
+                </span>
+                <span class="post-meta-item-text">更新于</span>
+                <time title="修改时间：2023-04-16 16:02:35" itemprop="dateModified" datetime="2023-04-16T16:02:35+08:00">2023-04-16</time>
+              </span>
+            <span class="post-meta-item">
+              <span class="post-meta-item-icon">
+                <i class="far fa-folder"></i>
+              </span>
+              <span class="post-meta-item-text">分类于</span>
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/fuzzing/" itemprop="url" rel="index"><span itemprop="name">fuzzing</span></a>
+                </span>
+            </span>
+
+          
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+        <p>这次课程设计学习一下Fuzzing的相关知识并尝试编写一个简单的Fuzzer，之后在此基础之上进行改进。</p>
+<p>首先学习一下<a target="_blank" rel="noopener" href="https://h0mbre.github.io/Fuzzing-Like-A-Caveman/">像野人一样Fuzzing系列</a>和<a target="_blank" rel="noopener" href="https://bbs.kanxue.com/thread-259382.htm">写一个简单的fuzzer系列的翻译</a>。像野人一样Fuzzing系列的文章写得很好，就是英文的有点难读；写一个简单的fuzzer的翻译质量比较一般，但也有其参考价值。</p>
+<p>之后考虑学习一下<a target="_blank" rel="noopener" href="https://github.com/AFLplusplus/AFLplusplus#building-and-installing-afl">AFL++</a>和一些论文，尝试对这个Fuzzer进行优化。</p>
+<span id="more"></span>
+
+<h2 id="像野人一样Fuzzing"><a href="#像野人一样Fuzzing" class="headerlink" title="像野人一样Fuzzing"></a>像野人一样Fuzzing</h2><h3 id="Caveman1"><a href="#Caveman1" class="headerlink" title="Caveman1"></a>Caveman1</h3><p>这篇文章介绍了这个<code>fuzzer</code>的<code>target</code>、基本变异策略、基本工作流程和一些细节在<code>python</code>中的实现方法。其中的问题分析方法、优化方法值得学习。</p>
+<p>针对<code>Exif</code>解析器进行fuzzing。<code>Exif</code>格式与<code>JPEG</code>一致，以<code>0xFFD8</code>开头，以<code>0xFFD9</code>结束，APP1标记为<code>0xFFE1</code>，通用标记为<code>0xFFXX</code>，不同的是<code>Exif</code>将部分图像/数码相机信息数据和缩略图插入到符合JPEG规范的JPEG中。</p>
+<p>使用Python3编写一个简单的突变fuzzer，对存在有效的<code>exif</code>填充的<code>jpeg</code>进行变异，并将变异后的文件提供给解析器找<code>crash</code>。</p>
+<p>首先会将输入的文件转化为<strong>字节数组</strong>的形式，之后根据变异策略产生变异文件，这里介绍了两种方法：</p>
+<ol>
+<li>bit flipping（比特翻转）</li>
+</ol>
+<p>​        随机选择比特翻转，这里随机选取1%的比特进行翻转</p>
+<ol start="2">
+<li><p>overwriting byte sequences with Gynvael’s ‘Magic Numbers’（覆盖为魔数）</p>
+<p> 随机选择字节覆盖为魔数。魔数是计算机程序中一些特殊值，比较容易导致错误（如：整数溢出）。将魔数存起来，随机选取一个（1/2/4byte）值使用其中一个魔数进行替换。</p>
+<ul>
+<li><p><code>0xFF</code></p>
+</li>
+<li><p><code>0x7F</code></p>
+</li>
+<li><p><code>0x00</code></p>
+</li>
+<li><p><code>0xFFFF</code></p>
+</li>
+<li><p><code>0x0000</code></p>
+</li>
+<li><p><code>0xFFFFFFFF</code></p>
+</li>
+<li><p><code>0x00000000</code></p>
+</li>
+<li><p><code>0x80000000</code> &lt;—- minimum 32-bit int</p>
+</li>
+<li><p><code>0x40000000</code> &lt;—- just half of that amount</p>
+</li>
+<li><p><code>0x7FFFFFFF</code> &lt;—- max 32-bit int</p>
+</li>
+</ul>
+</li>
+</ol>
+<p>对字节数组进行变异之后通过将新的字节数组写入到<code>JPEG</code>文件可以产生变异文件。</p>
+<p>通过以上步骤可以产生变异后的文件，之后就可以进行fuzzing了。</p>
+<ol>
+<li>通过任意一种策略产生一个变异文件。</li>
+<li>将变异文件喂给一个解析器。</li>
+<li>捕获**<code>Segment Fault</code>**并记录产生错误的图片。（这就是一个<code>crash</code>）</li>
+</ol>
+<blockquote>
+<p><a target="_blank" rel="noopener" href="https://github.com/ianare/exif-samples/tree/master/jpg">Sample</a>中的<code>Canon_40D.jpg</code></p>
+<p><a target="_blank" rel="noopener" href="https://github.com/mkttanabe/exif">进行fuzzing的解析器</a></p>
+</blockquote>
+<p>要捕捉到<code>Segment Fault</code>还有一些工作要做。<code>Segment Fault</code>来源于<strong>命令行而非二进制文件</strong>，是<code>shell</code>接收到了一个<code>SIGSEGV</code>信号并输出相关信息的。</p>
+<p>这里利用<code>pexpect</code>模块中的<code>run</code>函数起一个<code>shell</code>，并通过<code>pipes</code>模块中的<code>quote</code>函数通过命令行的命令来启动解析器接收输入。通过这种方法，我们可以检测到<code>run</code>函数起的<code>shell</code>输出的<code>Sigment Fault</code>。每次检测到<code>crash</code>之后，我们就可以记录下这次的图片，这张图片会引发解析器的错误。</p>
+<p>在这之后，可以通过<code>gcc</code>中的<code>ASan</code>来对产生的<code>crashes</code>进行分析，我们需要通过以下命令对解析器重新进行编译：<code>gcc -fsanitize=address -ggdb -o exifsan sample_main.c exif.c</code>。</p>
+<p>重编译后的解析器解析产生<code>crash</code>的变异文件之后会有详细的错误信息，从中可以得知错误的类型并对这些<code>crash</code>进行分类。</p>
+<h3 id="Caveman2"><a href="#Caveman2" class="headerlink" title="Caveman2"></a>Caveman2</h3><p>这一篇主要是在1中的fuzzer的基础上进行性能优化（运行时间上），并使用<code>Cpp</code>和<code>C</code>重写了这个<code>fuzzer</code>。其优化的过程是：找到最影响性能的部分，之后寻找好的替代方法。</p>
+<p>使用<code>cProfile</code>模块进行性能分析<code>python3 -m cProfile -s cumtime JPEGfuzzer.py ~/jpegs/Canon_40D.jpg</code></p>
+<p>发现大量的时间花费在了<code>pexpect</code>模块的<code>pty</code>中，因此使用<code>subprocess</code>模块的<code>popen</code>替代<code>run</code>来重写，发现速度显著加快。再次分析发现在旧的<code>bit_flip</code>中花费了不少时间，因此可以重构一下<code>bit_flip</code>，减少类型转换，完善逻辑。</p>
+<p>这里他说有利用多线程或多进程的机会，但将这个优化方式留到以后（但实际上就在这篇文章的末尾）。为了有更好的性能，使用<code>Cpp</code>重写这个<code>fuzzer</code>。使用<code>cpp</code>重写的<code>fuzzer</code>确实要快不少。</p>
+<p>之后转向对更难的<a target="_blank" rel="noopener" href="https://github.com/Exiv2/exiv2">exiv2</a>进行fuzzing，找到了新的错误<code>Floating point exeception</code>。</p>
+<p>然后使用<code>C</code>重写了<code>fuzzer</code>，同时对代码逻辑进行优化，对于输入文件仅仅打开一次，之后就会保存在分配的内存中。</p>
+<p>询问了AFL制作者lcamtuf的建议后不再使用<code>popen</code>来运行可执行程序，<code>popen</code>会起一个<code>shell</code>并且运行的很烂。lcamtuf建议使用<code>fork</code>创建一个子进程，之后通过<code>execvp</code>来执行命令，通过<code>waitpid</code>等待子进程运行结束并返回退出状态。</p>
+<p>由于在这个系统调用路径中没有适当的<code>shell</code>（不太清楚没有适当的<code>shell</code>是什么意思），还必须打开<code>/dev/null</code>，并将stdout和stderr定向到那，因为我们不关心命令输出。并且使用<code>WTERMSIG</code>宏来检索在wifsignals宏返回true时终止子进程的信号，这将表明我们得到了段错误或浮点异常等。</p>
+<h3 id="Caveman3"><a href="#Caveman3" class="headerlink" title="Caveman3"></a>Caveman3</h3><p>这篇主要通过一个简单的程序<code>vuln</code>讲述了<code>Code Coverage</code>(代码覆盖)的重要性，并且比较了一下随机比特翻转和随机字节覆盖，代码覆盖率是一个非常重要的指标，著名的<code>AFL</code>就是以此为基础的。</p>
+<p>首先比较了一下随机比特翻转和随机字节覆盖，实际上如果穷举所有情况，原先的随机比特翻转的表现是比较差的，毕竟顶多就8种变化，<code>AFL</code>中虽然也有比特翻转，但相对复杂许多。</p>
+<p>之后通过程序<code>vuln</code>讲述了代码覆盖。<code>vuln</code>中有3个分支判断，通过判断输入中的3个值来确定分支走向，只有3个判断都通过才能走到漏洞点。像当前的<code>fuzzer</code>这样，每次变异文件都是在原来种子文件的基础上进行（不管前一次有没有通过判断），这几乎是通过穷举（爆破）的方法来通过判断。本身变异到判断值的几率就小，当判断多了之后，通过多次判断走到漏洞点的概率就更小了(<code>P(A)*P(B)*P(C)</code>)。为了解决这个的问题，当我们走到新的路径时，我们需要将这次的变异文件记录下来，之后在此基础上变异，可以显著增加我们走到漏洞点的概率。</p>
+<p>更一般地说，对于普遍的程序，遍历更多的路径有助于我们对更多的代码进行测试，可以增加找到<code>crash</code>的概率。因此我们需要将能进入新路径的文件记录下来，让之后的变异在此基础上进行（当然原来的文件不一定要丢弃）。</p>
+<p>然而实现代码覆盖并不是一件容易的事情，这需要用到**插桩(instrumentation)**的技术，这也是目前<code>fuzzer</code>工作遇到的主要问题。</p>
+<h3 id="Caveman4"><a href="#Caveman4" class="headerlink" title="Caveman4"></a>Caveman4</h3><p>这篇博文主要通过实现快照机制来减少系统调用和文件系统交互，从而达到优化性能并引入代码覆盖追踪的目的。</p>
+<p>首先对有漏洞的程序使用<code>strace</code>来查看其执行的系统调用。经过分析查看，我们可以发现一些值得优化的地方，对于fuzzer而言，每个迭代都需要执行一次<strong>文件操作打开种子文件</strong>（可以通过在迭代之前将文件写入内存降低到1次内存操作），并且还要<strong>使用<code>fork()+execvp()</code>执行目标程序</strong>；对于目标程序而言，每个迭代都需要进行<strong>一系列的初始化操作</strong>，并且需要执行一次<strong>文件操作打开突变文件</strong>。</p>
+<p>为此提出了一种初步的快照机制：</p>
+<p>在程序完成初始化操作并读入文件之后，对程序内存进行快照，保存程序的状态并在文件保存的位置写入一个新的字节流fuzzcase，使其运行直到结束；当程序运行结束时，使程序恢复到保存的状态并在文件保存的位置写入一个新的字节流fuzzcase，不断循环这个过程来进行fuzzing。</p>
+<p>通过这种方法，我们的fuzzer只需要执行一次<code>foek()+execvp()</code>，目标程序也只需要进行一次初始化操作和文件操作，这可以显著提高性能。</p>
+<p>优化后的程序流程：</p>
+<ol>
+<li>运行目标程序，在第一条指令执行之前<code>break</code>。</li>
+<li>在程序开始（程序完成文件读入）和结束（<code>exit</code>）的位置下断点。</li>
+<li>运行程序知道程序开始位置</li>
+<li>收集程序的所有可写内存</li>
+<li>捕获所有寄存器状态</li>
+<li>插入fuzzcase到heap中覆盖文件读入位置的内容</li>
+<li>到达结束位置后恢复程序</li>
+<li>将程序状态恢复到开始位置的状态</li>
+<li>重复第6步</li>
+</ol>
+<p>为了实现这个快照机制，我们需要通过<code>ptrace</code>编写一个简单的<code>debuger</code>来满足我们的需求。</p>
+<blockquote>
+<p><a target="_blank" rel="noopener" href="https://eli.thegreenplace.net/2011/01/23/how-debuggers-work-part-1">debuger教程</a></p>
+</blockquote>
+<p>这个<code>debuger</code>并不需要太复杂的功能，只要可以插入和移除断点就可以了。插入断点通过<code>int 0x3</code>也就是操作码<code>\xCC</code>完成，当然我们还需要保存地址和原来的值来移除断点。</p>
+<p>我们需要让<code>debuger</code>能够<code>trace</code>到目标程序，因此可以<code>fork()</code>一个子进程作为<code>debugee</code>，用于被<code>debuger</code>监控并执行目标程序（<code>ptrace</code>的<code>PTRACE_TRACEME</code>），非常重要的是，我们可以通过**在<code>debugee</code>中调用<code>personality(ADDR_NO_RANDOMIZE)</code>来禁用<code>ASLR</code>**。</p>
+<p>首先需要在下断点之前获取这个地址原本的值，文章中是写了一个名为<code>ptrace_helpers</code>的东西帮助进行。之后就可以保存这个值并将该处的值修改为<code>\xCC</code>（这里一次性获取了8个字节，但只修改最低位为<code>0xCC</code>）。</p>
+<p>之后通过<code>ptrace</code>的<code>PTRACE_CONT</code>来继续运行</p>
+<p><strong>快照</strong></p>
+<p>除了<code>debuger</code>之外，我们还需要能够保存快照，文章中是通过<code>ptrace</code>和<code>/proc</code>伪文件来创建快照的。</p>
+<p><strong>寄存器快照</strong></p>
+<p>通过<code>ptrace</code>，<code>debuger</code>可以捕获和设置<code>debugee</code>的寄存器状态。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/user.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;sys/ptrace.h&gt;</span></span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">user_regs_struct</span> <span class="title">registers</span>;</span></span><br><span class="line">ptrace(PTRACE_GETREGS, child_pid, <span class="number">0</span>, &amp;registers); <span class="comment">// 获取寄存器状态</span></span><br><span class="line">ptrace(PTRACE_SETREGS, child_pid, <span class="number">0</span>, &amp;registers); <span class="comment">// 设置寄存器状态</span></span><br></pre></td></tr></table></figure>
+
+<p>借助这两个函数，我们可以保存位于程序开始位置的寄存器状态，并在程序结束位置回复寄存器状态，以此实现寄存器的快照。</p>
+<p><strong>内存快照</strong></p>
+<p>至于可写内存的快照，则需要利用<code>/proc</code>。当程序运行到开始的断点时，通过<code>cat /proc/$pid/maps | grep rw</code>可以看到所有可写的内存（偏移，大小等信息）。fuzzer中存放fuzzcase的地址和gdb中看到的有些不同，似乎是因为两个debuger环境变量不同的原因。对于程序<code>vuln</code>，当停在<code>check_one()</code>的时，我们可以看到<code>rax</code>指向的即是我们输入存储的位置。</p>
+<p>后面快照的过程就是打开文件<code>/proc/$pid/mem</code>，并根据<code>cat /proc/$pid/maps | grep rw</code>中得到的可写内存的相关信息定位文件中的位置并读入对应大小的内容，以此实现对可写内存的快照。</p>
+<p>创建快照的过程慢一点也无所谓，毕竟只会进行一次。但是恢复的过程每轮迭代都会进行，需要尽可能快。</p>
+<p> 每轮迭代都和文件系统交互是相当慢的，但好在<code>Linux kernel 3.2</code>之后，提供了一个快速的，进程和进程之间的内存读写API<code>process_vm_readv()</code>和<code>process_vm_writev()</code>。</p>
+<blockquote>
+<p><a target="_blank" rel="noopener" href="https://linux.die.net/man/2/process_vm_writev"><code>process_vm_readv()</code>和<code>process_vm_writev()</code></a></p>
+</blockquote>
+<p>由于这个进程直接对另一个进程操作，不遍历内核，也不涉及文件系统，因此它将大大提高写入速度。</p>
+<p>恢复的过程只需要利用<code>process_vm_writev()</code>将保存好的内容写回去就行了。</p>
+<p>通过上述方式，我们可以对代码覆盖进行追踪，我们的代码覆盖反馈机制的工作流程是:</p>
+<ol>
+<li>对原型输入进行突变并且插入fuzzcase到heap中的对应位置，执行程序</li>
+<li>恢复<code>debugee</code></li>
+<li>如果到达了动态断点，则将这个输入保存在语料库中，并移除这个断点</li>
+<li>如果语料库非空。则随机选择一个语料，重新从第一步开始</li>
+</ol>
+<p>通过本次改进，我们的fuzzer可以比AFL快20到30倍，而且几乎可以瞬间得到<code>crash</code>，但是这需要一些逆向和针对目标程序的工作。比如在可写内存快照时，采用的是硬编码的方法，除此之外还需要通过其他工具（比如：Ghidra 、objdump…）来获取BBL的地址以便于下断点。尽管泛用性较差，也不是开箱即用，但对于特定的目标，只需要一些手工的工作即可得到非常好的效果。</p>
+<p>改进的想法：</p>
+<ul>
+<li>通过重构代码和改变全局变量的位置优化性能</li>
+<li>能够使用Python脚本创建的配置文件动态配置fuzzer</li>
+<li>实现更多的突变策略</li>
+<li>实现更多的代码覆盖机制</li>
+<li>开发fuzzer使得许多实例可以并行运行并共享发现的输入/覆盖数据</li>
+</ul>
+<h3 id="Caveman5"><a href="#Caveman5" class="headerlink" title="Caveman5"></a>Caveman5</h3><h3 id="Caveman6"><a href="#Caveman6" class="headerlink" title="Caveman6"></a>Caveman6</h3><h2 id="写一个简单的fuzzer"><a href="#写一个简单的fuzzer" class="headerlink" title="写一个简单的fuzzer"></a>写一个简单的fuzzer</h2><h2 id="trapfuzzer的插桩方式"><a href="#trapfuzzer的插桩方式" class="headerlink" title="trapfuzzer的插桩方式"></a>trapfuzzer的插桩方式</h2><blockquote>
+<p><a target="_blank" rel="noopener" href="https://github.com/hac425xxx/trapfuzzer/blob/master/">github仓库</a></p>
+<p><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1UV4y1A7wS/?spm_id_from=333.1007.top_right_bar_window_history.content.click&vd_source=a8e5b587f186464e13433c5dfdc9e6bc">b站讲解</a></p>
+</blockquote>
+<p>用的IDA Python进行<strong>断点插桩（与Pin不同）</strong>，利用IDA Python遍历所有基本块，并将每个基本块的第一条指令替换为<code>int 0x3</code>也就是<code>0xCC</code>，当然这个过程中会将被插桩的指令地址以及原来的指令写到文件中。</p>
+<p>被插桩的程序无法正常运行（毕竟函数开头被换了），只能通过类似<code>debuger</code>的东西运行他，当到达插桩的位置时，就会触发<code>int 0x3</code>（断点），交由<code>debuger</code>处理，如果我们提早设置好处理函数，系统就会自动处理这个断点，执行我们的功能。</p>
+<p>处理函数需要能接收到这个断点，记录下这个位置，并且替换为原来的值，之后让程序继续运行。</p>
+<h2 id="Pin的简单了解"><a href="#Pin的简单了解" class="headerlink" title="Pin的简单了解"></a>Pin的简单了解</h2><p>Pin是在<code>Just in time(JIT)</code>模式下工作的，其插桩不会改变可执行程序的原本代码。</p>
+<h3 id="Pin的插桩过程"><a href="#Pin的插桩过程" class="headerlink" title="Pin的插桩过程"></a>Pin的插桩过程</h3><h4 id="Pin的工作流程"><a href="#Pin的工作流程" class="headerlink" title="Pin的工作流程"></a>Pin的工作流程</h4><p>首先系统加载<code>pin</code>并进行初始化，再由<code>pin</code>去加载<code>pintool</code>，进行相关初始化，然后<code>pintool</code>请求<code>pin</code>运行待插装的程序。<code>Pin</code>则拦截程序运行的入口点，根据插桩粒度取一段指令序列，重新编译成一段新的指令序列并执行，这个过程只会在内存中修改代码。产生的这一段代码和原始代码执行流程几乎一样，在一段指令序列运行完后，Pin会重复上述过程直到程序运行结束。</p>
+<p>执行过程：</p>
+<ol>
+<li>启动自己（pin.exe），以debugger的模式，附加要分析程序的进程</li>
+<li>注入pinvm.dll到宿主程序中</li>
+<li>注入自己的工具代码(即pintool.dll)</li>
+<li>激活主程序进程</li>
+</ol>
+<p>当一个被<code>Pin</code>插桩的程序运行时，有3个程序在运行：**应用程序、<code>Pin</code>和<code>Pintool</code>**。 <code>Pin</code>是对应用程序进行插桩的引擎。<code>Pintool</code>包含了插桩执行的指令，它作为<code>Pin</code>的一个<code>library</code>存在。</p>
+<p><strong>应用程序、<code>Pin</code>和<code>Pintool</code>共享同一个地址空间</strong>，但是他们不共享libraries，所以他们其实是glibc的3个拷贝。通过让三者的库独立私有，避免了Pin、Pintool和应用程序本身的交互冲突。因为不同组件拥有不同的库拷贝，所以<code>Pin/pintool</code>和应用程序本身不共享任何数据。</p>
+<h4 id="Pin的插桩模式"><a href="#Pin的插桩模式" class="headerlink" title="Pin的插桩模式"></a>Pin的插桩模式</h4><p> <strong>1．Instruction level (Ins )</strong></p>
+<p>指令级插桩（instruction instrumentatio），通过函数INS_AddInstrumentFunctio实现。 即在每一条原始程序指令前，后插入自己的代码，即调用这个函数。</p>
+<p> <strong>2. Function level(RTN)</strong></p>
+<p>函数级的插装，使用RTN_AddInstrumentFunction函数。Pin通过符号表信息来找到这些需要插入的位置，要使用这种模式的代码插入，首先得调用pin内置的初始化符号表函数，即PIN_InitSymbols()  </p>
+<p> <strong>3. Basic block level(BBL)</strong>  </p>
+<p>即基本调用块级别插入模式，只在trace时候可用。通过函数TRACE_AddInstrumentFunction实现。</p>
+<p> <strong>4. image level</strong>  </p>
+<p>镜像级插装（image instrumentation），使用IMG_AddInstrumentFunction函数，由于其依赖于符号信息去确定函数边界，因此必须在调用PIN_Init之前调用PIN_InitSymbols。</p>
+<h3 id="intel-Pin-架构"><a href="#intel-Pin-架构" class="headerlink" title="intel Pin 架构"></a>intel Pin 架构</h3><p><img src="MyFuzzer1/20160318104746473.png" alt="intel Pin 架构"></p>
+<p><strong>JIT Compiler</strong><br><code>Pin</code>将一个架构的指令直接编译成同样的指令，没有经过中间指令，编译后的指令存储在一个<code>code cache</code>中。只有<code>code cache</code>中的指令被执行了，原始的指令不被执行。<br>应用程序的指令是<strong>以<code>trace</code>为单位编译</strong>的，一个trace，就是一串指令，直到遇到以下条件终止：</p>
+<blockquote>
+<p>(i)非条件控制转移 (branch, call, or return),<br>(ii)若干预定义的条件控制转移<br>(iii)若干在trace中被fetch的预定义指令</p>
+</blockquote>
+<p>每个trace可能有多个出口，比如条件指令，当碰到条件指令时，控制就会转移到VM，由VM去寻找目标trace.</p>
+<p><strong>Trace Linking and Register Re-allocation</strong></p>
+<p>Pin采取的JIT一些特性——Trace Linking、Register Re-allocation来优化插装代码 。</p>
+<p>Pin在Trace Linking中做了优化，一般情况下，一个已编译的trace在结束时，需要跳转到另一个trace去执行，需要从Code Cache切换到VM，由VM来判断并决定下一个跳转trace的地址，然后再将控制权交给Code cache去执行。这样就有额外的切换开销，影响效率。Pin利用一个可动态增长的链表将已编译的trace链接成一个单项链表。每次由一个trace跳转到另一个trace时，通过扫描此trace链表来寻找跳转的trace地址，仅当在链表中无匹配时，才切换到VM下，进行新的trace的编译，并添加到trace链表的表头。</p>
+<h2 id="杂谈"><a href="#杂谈" class="headerlink" title="杂谈"></a>杂谈</h2><ul>
+<li>感觉要先确定好大致的方向，比如语言（C）、运行环境（ubuntu linux）、<strong>fuzzer针对的目标</strong>，先开始做，之后在此基础之上添加。</li>
+<li>fuzzer针对的目标很关键，由于人力和时间不充裕，因此想做出一个适用于所有程序的fuzzer是<strong>不现实</strong>的。</li>
+<li>针对的目标有很多种分类，如：目标的输入格式（图片解析器，字符串解析器、xx管理系统…），不同的输入格式可能需要突变的位置不同、变异策略也有可能不同（这一点不太确定），泛用性的提升会造成性能的普遍低下；目标能提供的资源（只有二进制文件或者有源代码），这可能对插桩的方式有影响（一般有源码更好插但会涉及到一些汇编层面的知识，现在连插桩如何实现还不太清楚）；甚至乎有目标的架构（amd64…）</li>
+<li>突变策略感觉也多种多样。在宏观层面上（整体策略）：有普通的爆破式的形式（不对种子进行筛选，这挺低效的）；也有AFL那样采用遗传算法的（根据代码覆盖率，crash产生速率等指标评估每个种子（变异的基础文件），选择好的种子进行变异）；还有用炼丹的方法选种子的，感觉炼丹挺适合图片和字符串类的种子选择的，只是要构建模型比较复杂，如果要用的话可能要上网找，而且是Python，如果fuzzer也用python的话速度会很慢，可以看看能不能利用其思想（LSTM、RNN、VAN之类关于NLP的）来进行。在微观层面上（涉及具体内容的改变）：有简单的增删改比特（或字节）以及其叠加（小部分更改），也有对字节的算术上的加减，也有大范围的改变，多个种子拼接等等。</li>
+<li>评价指标目前只看到有<code>crash</code>产生速率、迭代速率、代码覆盖率几个指标。</li>
+<li>UI的优化也是要做的，需要让用户了解fuzzer的工作状态。</li>
+</ul>
+
+    </div>
+
+    
+    
+    
+
+      <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/fuzzing/" rel="tag"># fuzzing</a>
+          </div>
+
+        
+
+
+        
+    <div class="post-nav">
+      <div class="post-nav-item">
+    <a href="/2023/04/03/MyFuzzer0/" rel="prev" title="MyFuzzer0">
+      <i class="fa fa-chevron-left"></i> MyFuzzer0
+    </a></div>
+      <div class="post-nav-item">
+    <a href="/2023/04/15/MyFuzzer2/" rel="next" title="MyFuzzer2">
+      MyFuzzer2 <i class="fa fa-chevron-right"></i>
+    </a></div>
+    </div>
+      </footer>
+    
+  </article>
+  
+  
+  
+
+
+
+          </div>
+          
+
+<script>
+  window.addEventListener('tabs:register', () => {
+    let { activeClass } = CONFIG.comments;
+    if (CONFIG.comments.storage) {
+      activeClass = localStorage.getItem('comments_active') || activeClass;
+    }
+    if (activeClass) {
+      let activeTab = document.querySelector(`a[href="#comment-${activeClass}"]`);
+      if (activeTab) {
+        activeTab.click();
+      }
+    }
+  });
+  if (CONFIG.comments.storage) {
+    window.addEventListener('tabs:click', event => {
+      if (!event.target.matches('.tabs-comment .tab-content .tab-pane')) return;
+      let commentClass = event.target.classList[1];
+      localStorage.setItem('comments_active', commentClass);
+    });
+  }
+</script>
+
+        </div>
+          
+  
+  <div class="toggle sidebar-toggle">
+    <span class="toggle-line toggle-line-first"></span>
+    <span class="toggle-line toggle-line-middle"></span>
+    <span class="toggle-line toggle-line-last"></span>
+  </div>
+
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <ul class="sidebar-nav motion-element">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <!--noindex-->
+      <div class="post-toc-wrap sidebar-panel">
+          <div class="post-toc motion-element"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%83%8F%E9%87%8E%E4%BA%BA%E4%B8%80%E6%A0%B7Fuzzing"><span class="nav-number">1.</span> <span class="nav-text">像野人一样Fuzzing</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Caveman1"><span class="nav-number">1.1.</span> <span class="nav-text">Caveman1</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Caveman2"><span class="nav-number">1.2.</span> <span class="nav-text">Caveman2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Caveman3"><span class="nav-number">1.3.</span> <span class="nav-text">Caveman3</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Caveman4"><span class="nav-number">1.4.</span> <span class="nav-text">Caveman4</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Caveman5"><span class="nav-number">1.5.</span> <span class="nav-text">Caveman5</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Caveman6"><span class="nav-number">1.6.</span> <span class="nav-text">Caveman6</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%99%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84fuzzer"><span class="nav-number">2.</span> <span class="nav-text">写一个简单的fuzzer</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#trapfuzzer%E7%9A%84%E6%8F%92%E6%A1%A9%E6%96%B9%E5%BC%8F"><span class="nav-number">3.</span> <span class="nav-text">trapfuzzer的插桩方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Pin%E7%9A%84%E7%AE%80%E5%8D%95%E4%BA%86%E8%A7%A3"><span class="nav-number">4.</span> <span class="nav-text">Pin的简单了解</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Pin%E7%9A%84%E6%8F%92%E6%A1%A9%E8%BF%87%E7%A8%8B"><span class="nav-number">4.1.</span> <span class="nav-text">Pin的插桩过程</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#Pin%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%B5%81%E7%A8%8B"><span class="nav-number">4.1.1.</span> <span class="nav-text">Pin的工作流程</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Pin%E7%9A%84%E6%8F%92%E6%A1%A9%E6%A8%A1%E5%BC%8F"><span class="nav-number">4.1.2.</span> <span class="nav-text">Pin的插桩模式</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#intel-Pin-%E6%9E%B6%E6%9E%84"><span class="nav-number">4.2.</span> <span class="nav-text">intel Pin 架构</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9D%82%E8%B0%88"><span class="nav-number">5.</span> <span class="nav-text">杂谈</span></a></li></ol></div>
+      </div>
+      <!--/noindex-->
+
+      <div class="site-overview-wrap sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="a1ph0nse"
+      src="/images/avatar.jpg">
+  <p class="site-author-name" itemprop="name">a1ph0nse</p>
+  <div class="site-description" itemprop="description">pwn菜狗、cs菜鸡</div>
+</div>
+<div class="site-state-wrap motion-element">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+          <a href="/archives/">
+        
+          <span class="site-state-item-count">76</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+            <a href="/categories/">
+          
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">分类</span></a>
+      </div>
+      <div class="site-state-item site-state-tags">
+            <a href="/tags/">
+          
+        <span class="site-state-item-count">42</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+
+
+      </div>
+
+    </div>
+  </aside>
+  <div id="sidebar-dimmer"></div>
+
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        
+
+        
+
+<div class="copyright">
+  
+  &copy; 
+  <span itemprop="copyrightYear">2023</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">a1ph0nse</span>
+</div>
+  <div class="powered-by">由 <a href="https://hexo.io/" class="theme-link" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.org/" class="theme-link" rel="noopener" target="_blank">NexT.Gemini</a> 强力驱动
+  </div>
+
+        
+
+
+
+
+
+
+
+
+      </div>
+    </footer>
+  </div>
+
+  
+  <script src="/lib/anime.min.js"></script>
+  <script src="/lib/velocity/velocity.min.js"></script>
+  <script src="/lib/velocity/velocity.ui.min.js"></script>
+
+<script src="/js/utils.js"></script>
+
+<script src="/js/motion.js"></script>
+
+
+<script src="/js/schemes/pisces.js"></script>
+
+
+<script src="/js/next-boot.js"></script>
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+  
+
+</body>
+</html>
